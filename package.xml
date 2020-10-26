@@ -1,13 +1,13 @@
 <?xml version="1.0"?>
 <package format="2">
-	<name>darknet_data_collection</name>
+	<name>nn_data_collection</name>
 	<version>1.0.0</version>
 	<description>
-		The darknet_data_collection package is used to collect data for
-		training neural networks built within Darknet. It collects perfect
+		The nn_data_collection package is used to generate data for
+		training neural networks in a variety of formts. It collects perfect
 		data from a Gazebo model and records it in the correct format for
-		darknet. It also gathers instance segmentation data and uses a
-		similiar format.
+		darknet. It is designed to allow flexible specification of movement
+		to allow the user to simulate a variety of scenarios.
 	</description>
 
 	<!-- One maintainer tag required, multiple allowed, one person per tag -->
