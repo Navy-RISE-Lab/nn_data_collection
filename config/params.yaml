@@ -4,3 +4,8 @@ bag_file: "test.bag"
 camera_frame_id: "camera/topsy"
 # The list of robots to control.
 /robot_list: "athreos"
+
+# Specify the needed values for each robot.
+athreos:
+    class: 15
+    id: 7

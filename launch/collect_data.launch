@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <launch>
 
-	<node pkg="nn_data_collection" type="collect_data.py" name="collect_data">
+	<node pkg="nn_data_collection" type="collect_data.py" name="collect_data" output="screen">
 		<rosparam file="$(find nn_data_collection)/config/params.yaml" command="load" subst_value="true"/>
 	</node>
 </launch>

@@ -130,7 +130,7 @@ def initializeRobots():
 if __name__ == "__main__":
     rospy.init_node(name='collect_data')
     # Load bag file
-    (bag, simulated_rate) = initializeBagFile()
+    # (bag, simulated_rate) = initializeBagFile()
     # Setup camera
     camera_frame_id = lookupCameraFrame()
     # Load each robot
