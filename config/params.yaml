@@ -1,0 +1,6 @@
+# The location of the bag file to replay. This can accept environment args (ex. $(optenv HOME))
+bag_file: "test.bag"
+# The frame_id of the camera as represented in the TF tree.
+camera_frame_id: "camera/topsy"
+# The list of robots to control.
+/robot_list: "athreos"
