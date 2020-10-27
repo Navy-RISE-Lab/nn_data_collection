@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<launch>
+	<node pkg="nn_data_collection" type="collect_data.py" name="collect_data">
+		<param name="bag_file" value="test_file.bag"/>
+	</node>
+</launch>
