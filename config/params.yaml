@@ -9,3 +9,4 @@ camera_frame_id: "camera/topsy"
 athreos:
     class: 15
     id: 7
+    keypoints: [[0.35, -0.3, 0.0], [0.35, 0.3, 0.0], [-0.4, 0.3, 0.0], [-0.4, -0.3, 0.0]]

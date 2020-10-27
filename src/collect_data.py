@@ -99,26 +99,6 @@ def initializeRobots():
         robot_list.append(Robot(name))
     return robot_list
 
-    # class Robot:
-    #     """
-    #     This class contains all of the data needed to interface with one particular robot.
-    #     """
-
-    #     def __init__(self, name):
-    #         """
-    #         Given the name of the robot, look up all the relevant parameters from the server and store them for reference.
-
-    #         Test - watch for defaults when a value isn't found or warn/crash when an important value isn't found
-    #         """
-    #         # self.name
-    #         # self.class_id
-    #         # etc.
-    #     def createRobotMessage():
-    #         """
-    #         This creates a Gazebo XXXX method that will move this robot to the specified point in Gazebo.
-    #         @return the message, ready to send.
-    #         """
-
     # def initalizeBackgroundSubtractor(robot_list, camera_image_topic, gazebo_pub):
     #     """
     #     Create the subtractor, then move every robot into the air, capture an image, and do some sort of
