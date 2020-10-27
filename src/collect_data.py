@@ -27,12 +27,18 @@ def initializeBagFile():
         # Throw an error if it doesn't.
         error_string = 'Please specify the bag file to replay on the parameter "bag_file"'
         rospy.logfatal(error_string)
-        raise (rospy.ROSInitException(error_string))
+        raise rospy.ROSInitException(error_string)
     # If this point is reached, then the parameter at least exists.
     bag_file = rospy.get_param(parameter_name)
-    # Open the bag file. This might throw an error if there is an issue with the file. Go ahead and
-    # let that exception pass up, since it will contain useful information to the user.
-    bag = rosbag.Bag(f=bag_file)
+    # Open the bag file. This might throw an error, so catch it and send a warning
+    # to the user.
+    try:
+        bag = rosbag.Bag(f=bag_file)
+    except Exception as ex:
+        error_string = 'Unable to open {bag}: {error}'.format(
+            bag=bag_file, error=ex)
+        rospy.logfatal(error_string)
+        raise rospy.ROSInitException(error_string)
     # If this point is reached, the bag file is loaded and ready.
     # Now look up the simulated rate with the same method as the bag parameter.
     parameter_name = '~simulated_rate'
@@ -71,17 +77,17 @@ def initializeRobots():
     # Determine the list of robots and error if not found.
     parameter_name = '/robot_list'
     if not rospy.has_param(parameter_name):
-        error_message = 'No robot names specified on {param}'.format(
+        error_string = 'No robot names specified on {param}'.format(
             param=parameter_name)
-        rospy.logfatal(error_message)
-        raise rospy.ROSInitException(error_message)
+        rospy.logfatal(error_string)
+        raise rospy.ROSInitException(error_string)
     robot_names = rospy.get_param(parameter_name)
     # Throw an error if there are no robots specified.
     if len(robot_names) <= 1:
-        error_message = 'Must specify at least one robot in {param}'.format(
+        error_string = 'Must specify at least one robot in {param}'.format(
             param=parameter_name)
-        rospy.logfatal(error_message)
-        raise rospy.ROSInitException(error_message)
+        rospy.logfatal(error_string)
+        raise rospy.ROSInitException(error_string)
     # There is a chance the user specifies only a single robot without brackets, which would make
     # this parameter as a string. Check for that and convert it to a list for use later.
     if type(robot_names) is not list:
