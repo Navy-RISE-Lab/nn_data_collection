@@ -1,15 +1,24 @@
 #!/usr/bin/env python
+"""!
+This module contains the main code needed to collect synthetic data. It takes a user's provided bag
+file and uses it as a script to manipulate the target robots. These robots are moved into position
+at the right points and the data is collected. There are several formats that are created. They are:
+
+    - YOLO
+    - Something else
+"""
 import rosbag
 import rospy
+from Robot import Robot
 
 
-def loadBagFile():
-    """
+def initializeBagFile():
+    """!
     This function looks up the name of the bag file from the parameter server and loads that bag file. It also determines
     the rate at which the code should step through the bag file.
     @return A tuple with - (An object containing the loaded bagfile, the rate at which it should be stepped through)
-
-    Tests - Test if: bag file exists, if it doesn't exist, if nothing is on the parameter server, and if the bag file doesn't load.
+    @throw rospy.ROSInitException Thrown if there is no bag file parameter on the server.
+    @throw rosbag.ROSBagException Thrown if the bag file can't be loaded for some reason.
     """
     # Assume the parameter specifying the bag file name is a private parameter.
     parameter_name = '~bag_file'
@@ -25,24 +34,64 @@ def loadBagFile():
     # let that exception pass up, since it will contain useful information to the user.
     bag = rosbag.Bag(f=bag_file)
     # If this point is reached, the bag file is loaded and ready.
-    return bag
+    # Now look up the simulated rate with the same method as the bag parameter.
+    parameter_name = '~simulated_rate'
+    default_rate = 30.0
+    if not rospy.has_param(parameter_name):
+        rospy.logwarn(
+            'No simulated rate specificed on the parameter "simulated_rate" Using a default of %f instead.', default_rate)
+    simulated_rate = rospy.get_param(parameter_name, default_rate)
+    return (bag, simulated_rate)
 
-    # def loadCamera():
-    #     """
-    #     Look up the name of the topic to subscribe to for the camera image and camera information. Get the frame_id of the camera for use
-    #     by TF transforms later.
-    #     @return Those three parameters as a tuple - image topic, camera information topic, frame_id.
 
-    #     Tests - Test if: verify if topics/frame_id exist. Default values/exit if not found.
-    #     """
+def lookupCameraFrame():
+    """!
+    This function looks up the name of the frame_id used for the camera in TF for use in determining distances
+    and projections. It uses a default if not found.
+    @return The string representing the camera's frame_id in the TF tree.
+    """
+    parameter_name = '~camera_frame_id'
+    default_camera_frame = 'camera/base_link'
+    if not rospy.has_param(parameter_name):
+        rospy.logwarn('Frame parameter not found on {param}, using {default} instead'.format(
+            param=parameter_name, default=default_camera_frame))
+    camera_frame = rospy.get_param(parameter_name, default_camera_frame)
+    return camera_frame
 
-    # def loadRobots():
-    #     """
-    #     Look up the names of all the robots that should be controlled in this code. Then, create a robot object for each one.
-    #     @return A list of all Robot objects
 
-    #     Tests - must provide at least 1 robot
-    #     """
+def initializeRobots():
+    """!
+    This function determines the names of each robot that should be controlled. It then creates
+    a @ref Robot object for each robot. Those objects perform the correct initialization of needed
+    parameters.
+    @return A list of all created Robot objects
+    @throw rospy.ROSInitException Thrown if no robot_list parameter is found or if no robots are
+    specified.
+    """
+    # Determine the list of robots and error if not found.
+    parameter_name = '/robot_list'
+    if not rospy.has_param(parameter_name):
+        error_message = 'No robot names specified on {param}'.format(
+            param=parameter_name)
+        rospy.logfatal(error_message)
+        raise rospy.ROSInitException(error_message)
+    robot_names = rospy.get_param(parameter_name)
+    # Throw an error if there are no robots specified.
+    if len(robot_names) <= 1:
+        error_message = 'Must specify at least one robot in {param}'.format(
+            param=parameter_name)
+        rospy.logfatal(error_message)
+        raise rospy.ROSInitException(error_message)
+    # There is a chance the user specifies only a single robot without brackets, which would make
+    # this parameter as a string. Check for that and convert it to a list for use later.
+    if type(robot_names) is not list:
+        single_robot_name = robot_names
+        robot_names = [single_robot_name]
+    # Create each robot object and add it to a list.
+    robot_list = []
+    for name in robot_names:
+        robot_list.append(Robot(name))
+    return robot_list
 
     # class Robot:
     #     """
@@ -75,10 +124,11 @@ def loadBagFile():
 if __name__ == "__main__":
     rospy.init_node(name='collect_data')
     # Load bag file
-    bag = loadBagFile()
+    (bag, simulated_rate) = initializeBagFile()
     # Setup camera
-    # loadCamera()
-    # loadRobots()
+    camera_frame_id = lookupCameraFrame()
+    # Load each robot
+    robot_list = initializeRobots()
     # gazebo_pub = subscribe to Gazebo movement topic
     # tf_lookup = subscribe to TF
     # initalizeBackgroundSubtractor()
