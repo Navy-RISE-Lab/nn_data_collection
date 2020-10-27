@@ -7,9 +7,11 @@ at the right points and the data is collected. There are several formats that ar
     - YOLO
     - Something else
 """
+from gazebo_msgs.srv import SetModelState
+from Robot import Robot
 import rosbag
 import rospy
-from Robot import Robot
+import tf2_ros
 
 
 def initializeBagFile():
@@ -115,8 +117,15 @@ if __name__ == "__main__":
     camera_frame_id = lookupCameraFrame()
     # Load each robot
     robot_list = initializeRobots()
-    # gazebo_pub = subscribe to Gazebo movement topic
-    # tf_lookup = subscribe to TF
+    # Create the client to tell each robot to move in Gazebo.
+    gazebo_client_name = '/gazebo/set_model_state'
+    rospy.loginfo('Waiting for Gazebo to start...')
+    rospy.wait_for_service(gazebo_client_name)
+    gazebo_client = rospy.ServiceProxy(
+        name=gazebo_client_name, service_class=SetModelState)
+    # Create the TF lookup
+    tf_buffer = tf2_ros.Buffer()
+    tf_listener = tf2_ros.TransformListener(tf_buffer)
     # initalizeBackgroundSubtractor()
 
     # # For each view: for topic, msg, t in bag.read_messages(topics=['chatter', 'numbers']):

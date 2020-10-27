@@ -8,9 +8,11 @@ project(nn_data_collection)
 ## if COMPONENTS list like find_package(catkin REQUIRED COMPONENTS xyz)
 ## is used, also find other catkin packages
 find_package(catkin REQUIRED COMPONENTS
+	gazebo_msgs
 	geometry_msgs
 	rosbag
 	rospy
+	tf2_ros
 )
 
 ## System dependencies are found with CMake's conventions
