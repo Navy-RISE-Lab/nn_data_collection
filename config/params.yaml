@@ -3,10 +3,18 @@ bag_file: "test.bag"
 # The frame_id of the camera as represented in the TF tree.
 camera_frame_id: "camera/topsy"
 # The list of robots to control.
-/robot_list: "athreos"
+/robot_list: [athreos]
 
 # Specify the needed values for each robot.
 athreos:
+    class: 15
+    id: 7
+    frame_id: "base_link"
+    # These are the key points to look for in detection, relative to the origin of the
+    # frame specified in "frame_id"
+    keypoints: [[0.35, -0.3, 0.0], [0.35, 0.3, 0.0], [-0.4, 0.3, 0.0], [-0.4, -0.3, 0.0]]
+
+ephara:
     class: 15
     id: 7
     frame_id: "base_link"

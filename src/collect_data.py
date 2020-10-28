@@ -121,7 +121,7 @@ def initializeRobots():
         raise rospy.ROSInitException(error_string)
     robot_names = rospy.get_param(parameter_name)
     # Throw an error if there are no robots specified.
-    if len(robot_names) <= 1:
+    if len(robot_names) < 1:
         error_string = 'Must specify at least one robot in {param}'.format(
             param=parameter_name)
         rospy.logfatal(error_string)
