@@ -56,10 +56,12 @@
 	<!-- Use doc_depend for packages you need only for building documentation: -->
 	<!--   <doc_depend>doxygen</doc_depend> -->
 	<buildtool_depend>catkin</buildtool_depend>
+	<depend>cv_bridge</depend>
 	<depend>gazebo_msgs</depend>
 	<depend>geometry_msgs</depend>
 	<depend>rosbag</depend>
 	<depend>rospy</depend>
+	<depend>sensor_msgs</depend>
 	<depend>tf2_ros</depend>
 
 	<!-- The export tag contains other, unspecified, tags -->

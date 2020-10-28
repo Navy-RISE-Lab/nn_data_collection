@@ -7,11 +7,62 @@ at the right points and the data is collected. There are several formats that ar
     - YOLO
     - Something else
 """
+import cv2
+from cv_bridge import CvBridge
+from gazebo_msgs.srv import GetModelState
 from gazebo_msgs.srv import SetModelState
 from Robot import Robot
 import rosbag
 import rospy
+from sensor_msgs.msg import Image
 import tf2_ros
+
+
+def initializeBackgroundSubtractor(robot_list, gazebo_set_pose_client):
+    """!
+    Create the background subtractor. Then, manipulate the Gazebo environment to allow
+    the capture of a background image. This uses the MOG2 algorithm.
+    @param robot_list A list of the robots that shouldn't be part of the background.
+    @param gazebo_set_pose_client A server client used to move every robot within Gazebo.
+    @return The background subtractor used in the script.
+    """
+    # Set a large history to maximize the detection of differences from background.
+    background_history = 100
+    # ! @todo Explore how shadow detection impacts the results.
+    background_subtractor = cv2.createBackgroundSubtractorMOG2(
+        history=background_history, detectShadows=False)
+    # Create a client to determine where each robot is located within the Gazebo environment
+    gazebo_get_pose_name = '/gazebo/get_model_state'
+    rospy.loginfo('Waiting to find robot poses...')
+    rospy.wait_for_service(gazebo_get_pose_name)
+    gazebo_get_pose_client = rospy.ServiceProxy(
+        name=gazebo_get_pose_name, service_class=GetModelState)
+    # Move all the robots way up in the sky, presumably outside of the view of the camera.
+    rospy.loginfo('Moving robots and capturing background...')
+    for robot in robot_list:
+        # Create each message via the robot object.
+        robot_current_state = gazebo_get_pose_client(robot.getName(), '')
+        robot_current_state.pose.position.z = 1e6
+        robot_new_pose_request = robot.createSetModelStateRequest(
+            robot_current_state.pose)
+        # Move the robot to the new point in the sky
+        result = gazebo_set_pose_client(robot_new_pose_request)
+        # Do some error checking
+        if not result.success:
+            rospy.logerr('Error moving robot: {message}'.format(
+                result.status_message))
+    # Sleep briefly to allow the robots to finish moving.
+    rospy.sleep(duration=1.0)
+    # Capture N images and apply to subtractor
+    # We need to convert sensor_msgs/Image to cv2::Mat
+    bridge = CvBridge()
+    # cv_image = bridge.imgmsg_to_cv2(image_message, desired_encoding='passthrough')
+    for _ in range(background_history):
+        image = rospy.wait_for_message(
+            topic='camera/image_raw', topic_type=Image)
+        image_mat = bridge.imgmsg_to_cv2(img_msg=image)
+        background_subtractor.apply(image_mat)
+    return background_subtractor
 
 
 def initializeBagFile():
@@ -47,24 +98,9 @@ def initializeBagFile():
     default_rate = 30.0
     if not rospy.has_param(parameter_name):
         rospy.logwarn(
-            'No simulated rate specificed on the parameter "simulated_rate" Using a default of %f instead.', default_rate)
+            'No simulated rate specificed on the parameter "simulated_rate" Using a default of %f hz instead.', default_rate)
     simulated_rate = rospy.get_param(parameter_name, default_rate)
     return (bag, simulated_rate)
-
-
-def lookupCameraFrame():
-    """!
-    This function looks up the name of the frame_id used for the camera in TF for use in determining distances
-    and projections. It uses a default if not found.
-    @return The string representing the camera's frame_id in the TF tree.
-    """
-    parameter_name = '~camera_frame_id'
-    default_camera_frame = 'camera/base_link'
-    if not rospy.has_param(parameter_name):
-        rospy.logwarn('Frame parameter not found on {param}, using {default} instead'.format(
-            param=parameter_name, default=default_camera_frame))
-    camera_frame = rospy.get_param(parameter_name, default_camera_frame)
-    return camera_frame
 
 
 def initializeRobots():
@@ -101,12 +137,20 @@ def initializeRobots():
         robot_list.append(Robot(name))
     return robot_list
 
-    # def initalizeBackgroundSubtractor(robot_list, camera_image_topic, gazebo_pub):
-    #     """
-    #     Create the subtractor, then move every robot into the air, capture an image, and do some sort of
-    #     initialization depending on the subtractor
-    #     @return the subtractor
-    #     """
+
+def lookupCameraFrame():
+    """!
+    This function looks up the name of the frame_id used for the camera in TF for use in determining distances
+    and projections. It uses a default if not found.
+    @return The string representing the camera's frame_id in the TF tree.
+    """
+    parameter_name = '~camera_frame_id'
+    default_camera_frame = 'camera/base_link'
+    if not rospy.has_param(parameter_name):
+        rospy.logwarn('Frame parameter not found on {param}, using {default} instead'.format(
+            param=parameter_name, default=default_camera_frame))
+    camera_frame = rospy.get_param(parameter_name, default_camera_frame)
+    return camera_frame
 
 
 if __name__ == "__main__":
@@ -126,7 +170,9 @@ if __name__ == "__main__":
     # Create the TF lookup
     tf_buffer = tf2_ros.Buffer()
     tf_listener = tf2_ros.TransformListener(tf_buffer)
-    # initalizeBackgroundSubtractor()
+    # Set up the subtractor and initialize
+    background_subtractor = initializeBackgroundSubtractor(
+        robot_list, gazebo_client)
 
     # # For each view: for topic, msg, t in bag.read_messages(topics=['chatter', 'numbers']):
     # 	# For each robot:

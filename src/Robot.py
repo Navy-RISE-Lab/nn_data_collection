@@ -2,6 +2,7 @@
 This module contains the Robot class to support the robot specific calculations
 and hold relevant data.
 """
+from gazebo_msgs.msg import ModelState
 from geometry_msgs.msg import Point
 import rospy
 
@@ -88,3 +89,22 @@ class Robot(object):
         # Otherwise, look up the value.
         value = rospy.get_param(resolved_param_name, default_value)
         return value
+
+    def createSetModelStateRequest(self, robot_pose):
+        """!
+        Create a gazebo_msgs/ModelState message based on the provided pose.
+        @param robot_pose The geometry_msgs/Pose that represents the pose to use when
+        creating the message.
+        @return A gazebo_msgs/ModelState containing the robot's pose.
+        """
+        msg = ModelState()
+        msg.model_name = self.getName()
+        msg.pose = robot_pose
+        return msg
+
+    def getName(self):
+        """!
+        Get the robot's name.
+        @return The robot's name as a string.
+        """
+        return self._name

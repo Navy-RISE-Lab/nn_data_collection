@@ -3,5 +3,6 @@
 
 	<node pkg="nn_data_collection" type="collect_data.py" name="collect_data" output="screen">
 		<rosparam file="$(find nn_data_collection)/config/params.yaml" command="load" subst_value="true"/>
+		<remap from="camera/image_raw" to="infrastructure/camera/image_raw"/>
 	</node>
 </launch>
