@@ -4,6 +4,7 @@ and hold relevant data.
 """
 from gazebo_msgs.msg import ModelState
 from geometry_msgs.msg import Point
+from geometry_msgs.msg import Pose
 import rospy
 
 
@@ -29,6 +30,10 @@ class Robot(object):
         self._keypoints = self._lookupKeypoints("keypoints")
         # Determine what name to use to find the robot in the TF tree.
         self._frame_id = self._lookupParam("frame_id", "base_link")
+        # Set the pose to the origin.
+        pose = Pose()
+        pose.orientation.w = 1.0
+        self.recordPose(pose)
 
     def _lookupKeypoints(self, param_name):
         """!
@@ -90,16 +95,19 @@ class Robot(object):
         value = rospy.get_param(resolved_param_name, default_value)
         return value
 
-    def createSetModelStateRequest(self, robot_pose):
+    def createSetModelStateRequest(self, new_pose=None):
         """!
-        Create a gazebo_msgs/ModelState message based on the provided pose.
+        Create a gazebo_msgs/ModelState message based on the recorded pose.
         @param robot_pose The geometry_msgs/Pose that represents the pose to use when
         creating the message.
         @return A gazebo_msgs/ModelState containing the robot's pose.
         """
         msg = ModelState()
         msg.model_name = self.getName()
-        msg.pose = robot_pose
+        if new_pose is None:
+            msg.pose = self.getPose()
+        else:
+            msg.pose = new_pose
         return msg
 
     def getName(self):
@@ -108,3 +116,19 @@ class Robot(object):
         @return The robot's name as a string.
         """
         return self._name
+
+    def getPose(self):
+        """!
+        Get the robot's current pose with the actual z value, not the one out of
+        the camera frame.
+        @return The robot's current pose.
+        """
+        return self._pose
+
+    def recordPose(self, pose):
+        """!
+        Update the record of the robot's new pose. This should be the pose from
+        the bag file, not the pose to remove the robot from the camera's field of view.
+        @param pose The new pose for the robot.
+        """
+        self._pose = pose

@@ -42,15 +42,10 @@ def initializeBackgroundSubtractor(robot_list, gazebo_set_pose_client):
     for robot in robot_list:
         # Create each message via the robot object.
         robot_current_state = gazebo_get_pose_client(robot.getName(), '')
-        robot_current_state.pose.position.z = 1e6
-        robot_new_pose_request = robot.createSetModelStateRequest(
-            robot_current_state.pose)
-        # Move the robot to the new point in the sky
-        result = gazebo_set_pose_client(robot_new_pose_request)
-        # Do some error checking
-        if not result.success:
-            rospy.logerr('Error moving robot: {message}'.format(
-                result.status_message))
+        robot.recordPose(robot_current_state.pose)
+        robot_new_pose_request = robot.createSetModelStateRequest()
+        robot_new_pose_request.pose.position.z = 1e6
+        moveRobot(gazebo_set_pose_client, robot_new_pose_request)
     # Sleep briefly to allow the robots to finish moving.
     rospy.sleep(duration=1.0)
     # Capture N images and apply to subtractor
@@ -69,7 +64,8 @@ def initializeBagFile():
     """!
     This function looks up the name of the bag file from the parameter server and loads that bag file. It also determines
     the rate at which the code should step through the bag file.
-    @return A tuple with - (An object containing the loaded bagfile, the rate at which it should be stepped through)
+    @return A tuple with - (An object containing the loaded bagfile, a float representing the period at which
+    it should be stepped through)
     @throw rospy.ROSInitException Thrown if there is no bag file parameter on the server.
     @throw rosbag.ROSBagException Thrown if the bag file can't be loaded for some reason.
     """
@@ -100,7 +96,8 @@ def initializeBagFile():
         rospy.logwarn(
             'No simulated rate specificed on the parameter "simulated_rate" Using a default of %f hz instead.', default_rate)
     simulated_rate = rospy.get_param(parameter_name, default_rate)
-    return (bag, simulated_rate)
+    simulated_period = 1.0 / simulated_rate
+    return (bag, simulated_period)
 
 
 def initializeRobots():
@@ -153,10 +150,26 @@ def lookupCameraFrame():
     return camera_frame
 
 
+def moveRobot(client, pose_request):
+    """!
+    @brief Move a robot within Gazebo using the provided server client and request.
+    @param client The ROS server client used to tell Gazebo to move a model
+    @param pose_request The request for which model to move and where to move it.
+    @return True if the move was successful, false otherwise.
+    """
+    # Move the robot to the new point in the sky
+    result = client(pose_request)
+    # Do some error checking
+    if not result.success:
+        rospy.logerr('Error moving robot: {message}'.format(
+            result.status_message))
+    return result.success
+
+
 if __name__ == "__main__":
     rospy.init_node(name='collect_data')
     # Load bag file
-    # (bag, simulated_rate) = initializeBagFile()
+    (bag, simulated_period) = initializeBagFile()
     # Setup camera
     camera_frame_id = lookupCameraFrame()
     # Load each robot
@@ -173,23 +186,67 @@ if __name__ == "__main__":
     # Set up the subtractor and initialize
     background_subtractor = initializeBackgroundSubtractor(
         robot_list, gazebo_client)
-
-    # # For each view: for topic, msg, t in bag.read_messages(topics=['chatter', 'numbers']):
-    # 	# For each robot:
-    # 		# Determine its last pose
-    # 		pose = extractPose()
-    # 		robot.storePose(pose)
-    # 		# Put it there
-    # 		msg = robot.createRobotMessage()
-    # 		gazebo_pub.pub(msg)
-    # 		# Capture new image
-    # 		image = wait_for_message()
-    # 		# Background subtract
-    # 		subtracted_image = backgroundsubtract.subtract()
-    # 		# Determine distance from camera
-    # 		# Move out of way
-    # 		msg = robot.createRobotMessage()
-    # 		gazebo_pub.pub(msg)
-    # 	# Based on distances, layer robots appropriately
-    # 	# Write outputs to file
-    # # Shut down and close bag file
+    # Start the time at the begining and iterate in chunks of the period provided.
+    time_window_start = bag.get_start_time()
+    time_window_end = time_window_start + simulated_period
+    # We will need a bridge to convert sensor_msgs/Image and cv::Mat
+    bridge = CvBridge()
+    # Loop through the whole bag file until the end is reached. The two times above
+    # provide a moving window. The last iteration we want is when the window crosses
+    # the bag end time. The next iteration would have both start and end of the
+    # window past the bag file then. So use that as the break.
+    while time_window_start < bag.get_end_time():
+        # Start by moving every robot out of the way. They don't need to be in new
+        # spots. They will also be collision free, since they either have a pose from
+        # the bag file or the initial poses specified at launch.
+        for robot in robot_list:
+            robot_new_pose_request = robot.createSetModelStateRequest()
+            robot_new_pose_request.pose.position.z = 0
+            result = moveRobot(gazebo_client, robot_new_pose_request)
+            if not result:
+                rospy.logfatal('Unable to move robot, killing processing.')
+                exit()
+        # Now, go through each robot and move it into the scene.
+        for robot in robot_list:
+            (topics, msgs, times) = bag.read_messages(topics=robot.pose_topic,
+                                                      start_time=time_window_start, end_time=time_window_end)
+            # We only care about the first message, since there is one pose per time chunk.
+            pose = msgs.message
+            # Move the robot to that pose
+            # Sleep briefly to allow the image to update.
+            rospy.sleep(0.25)
+            # Capture an image
+            image = rospy.wait_for_message(
+                topic='camera/image_raw', topic_type=Image)
+            # Convert to cv::Mat
+            image_mat = bridge.imgmsg_to_cv2(img_msg=image)
+            # Use the background subtractor to find the robot. Be sure to set the
+            # learning rate to 0 to prevent updating the background image.
+            # Convert the mask into the robot's ID.
+            # Store this image mask
+            # Look up the robot's 3D pose
+            # Determine the robot's distance from the camera
+            # Project the key points into the camera
+        # Move every robot back to the ground
+        for robot in robot_list:
+            pass
+        # Wait a bit for the image to update.
+        rospy.sleep(0.25)
+        # Capture an image
+        # @todo Make this its own function
+        image = rospy.wait_for_message(
+            topic='camera/image_raw', topic_type=Image)
+        # Convert to cv::Mat
+        image_mat = bridge.imgmsg_to_cv2(img_msg=image)
+        # Write the background image
+        # Layer the masks according to the distances
+        # For the new format, split out the pixels by robot again, since this
+        # now accounts for occlusions
+        # Create bounding boxes for each robot for YOLO
+        # Write everything to file
+        # Update the times
+        time_window_start = time_window_end
+        time_window_end += simulated_period
+    # When this is finally done, record any meta information needed by networks.
+    # Close the bag file
+    bag.close()
