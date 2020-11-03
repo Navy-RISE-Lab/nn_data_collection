@@ -113,6 +113,14 @@ class Robot(object):
         """
         return self._name
 
+    def getPixelMask(self):
+        """!
+        Get the latest pixel mask for this robot.
+        @return The pixel mask where 1 represents the robot in the image and
+        0 represents everything else.
+        """
+        return self._mask
+
     def getTransform(self):
         """!
         Get the robot's current transform from the global frame to the robot's
@@ -120,6 +128,14 @@ class Robot(object):
         @return The robot's current transform.
         """
         return self._transform
+
+    def recordPixelMask(self, mask):
+        """!
+        Update the stored mask of an image where all 1 values represent pixels featuring
+        this robot and 0 is everything else.
+        @param mask The image mask to record.
+        """
+        self._mask = mask
 
     def recordTransform(self, transform):
         """!

@@ -162,6 +162,7 @@ if __name__ == "__main__":
     rospy.init_node(name='collect_data')
     # Load the buffer containing the motion record from the bag file.
     (tf_buffer, start_time, end_time, period) = initializeReplay()
+    current_time = start_time
     # Setup camera
     camera_frame_id = ParameterLookup.lookupWithDefault(
         parameter='~camera_frame_id', default='camera/base_link')
@@ -188,13 +189,14 @@ if __name__ == "__main__":
     # provide a moving window. The last iteration we want is when the window crosses
     # the bag end time. The next iteration would have both start and end of the
     # window past the bag file then. So use that as the break.
-    while start_time < end_time:
+    rospy.loginfo('Beginning data collection...')
+    while current_time < end_time:
         # Start by moving every robot out of the way. They don't need to be in new
         # spots. They will also be collision free, since they either have a pose from
         # the bag file or the initial poses specified at launch.
         for robot in robot_list:
             robot_new_pose_request = robot.createSetModelStateRequest()
-            robot_new_pose_request.pose.position.z = 0
+            robot_new_pose_request.pose.position.z = 1e6
             result = moveRobot(gazebo_client, robot_new_pose_request)
             if not result:
                 rospy.logfatal('Unable to move robot, killing processing.')
@@ -204,43 +206,60 @@ if __name__ == "__main__":
             # Look up each robot's pose from the bag file TF tree.
             try:
                 robot_transform = tf_buffer.lookup_transform_core(
-                    robot.getFullFrame(), global_frame_id, start_time)
+                    global_frame_id, robot.getFullFrame(), current_time)
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException), argument:
                 rospy.logwarn('%s' % argument)
-            # We only care about the first message, since there is one pose per time chunk.
-            # pose = msgs.message
-            # # Move the robot to that pose
-            # # Sleep briefly to allow the image to update.
-            # rospy.sleep(0.25)
-            # # Capture an image
-            # image = rospy.wait_for_message(
-            #     topic='camera/image_raw', topic_type=Image)
-            # # Convert to cv::Mat
-            # image_mat = bridge.imgmsg_to_cv2(img_msg=image)
+                # @TODO Figure out what to do when a single robot can't be found on the TF tree yet.
+            robot.recordTransform(robot_transform.transform)
+            # Move the robot and allow time for Gazebo to update
+            moveRobot(gazebo_client, robot.createSetModelStateRequest())
+            rospy.sleep(2.0)
+            # Capture an image
+            image = rospy.wait_for_message(
+                topic='camera/image_raw', topic_type=Image)
+            # Convert to cv::Mat
+            image_mat = bridge.imgmsg_to_cv2(img_msg=image)
             # Use the background subtractor to find the robot. Be sure to set the
             # learning rate to 0 to prevent updating the background image.
-            # Convert the mask into the robot's ID.
-            # Store this image mask
-            # Look up the robot's 3D pose
-            # Determine the robot's distance from the camera
-            # Project the key points into the camera
+            foreground_mask = background_subtractor.apply(
+                image_mat, learningRate=0.0)
+            robot.recordPixelMask(foreground_mask)
+            robot_new_pose_request = robot.createSetModelStateRequest()
+            robot_new_pose_request.pose.position.z = 1e6
+            result = moveRobot(gazebo_client, robot_new_pose_request)
+            if not result:
+                rospy.logfatal('Unable to move robot, killing processing.')
+                exit()
         # Move every robot back to the ground
         for robot in robot_list:
-            pass
+            robot_new_pose_request = robot.createSetModelStateRequest()
+            result = moveRobot(gazebo_client, robot_new_pose_request)
+            if not result:
+                rospy.logfatal('Unable to move robot, killing processing.')
+                exit()
         # Wait a bit for the image to update.
-        rospy.sleep(0.25)
+        rospy.sleep(2.0)
         # Capture an image
         # @todo Make this its own function
         image = rospy.wait_for_message(
             topic='camera/image_raw', topic_type=Image)
         # Convert to cv::Mat
         image_mat = bridge.imgmsg_to_cv2(img_msg=image)
+        # Look up the robot's 3D pose
+        # Determine the robot's distance from the camera
+        # Project the key points into the camera
         # Write the background image
         # Layer the masks according to the distances
         # For the new format, split out the pixels by robot again, since this
         # now accounts for occlusions
         # Create bounding boxes for each robot for YOLO
         # Write everything to file
+        # Update the user on progress.
+        percent_complete = (current_time - start_time).to_sec() / \
+            (end_time - start_time).to_sec() * 100.0
+        rospy.loginfo_throttle(
+            period=5.0, msg='%.1f%% completed' % percent_complete)
         # Update the times
-        start_time += period
+        current_time += period
     # When this is finally done, record any meta information needed by networks.
+    rospy.loginfo('100%% completed')
