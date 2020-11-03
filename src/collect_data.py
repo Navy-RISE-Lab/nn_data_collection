@@ -11,6 +11,7 @@ import cv2
 from cv_bridge import CvBridge
 from gazebo_msgs.srv import GetModelState
 from gazebo_msgs.srv import SetModelState
+from geometry_msgs.msg import Transform
 import ParameterLookup
 from Robot import Robot
 import rosbag
@@ -45,7 +46,12 @@ def initializeBackgroundSubtractor(robot_list, gazebo_set_pose_client):
     for robot in robot_list:
         # Create each message via the robot object.
         robot_current_state = gazebo_get_pose_client(robot.getName(), '')
-        robot.recordPose(robot_current_state.pose)
+        robot_transform_msg = Transform()
+        robot_transform_msg.translation.x = robot_current_state.pose.position.x
+        robot_transform_msg.translation.y = robot_current_state.pose.position.y
+        robot_transform_msg.translation.z = robot_current_state.pose.position.z
+        robot_transform_msg.rotation = robot_current_state.pose.orientation
+        robot.recordTransform(robot_transform_msg)
         robot_new_pose_request = robot.createSetModelStateRequest()
         robot_new_pose_request.pose.position.z = 1e6
         moveRobot(gazebo_set_pose_client, robot_new_pose_request)

@@ -4,7 +4,7 @@ and hold relevant data.
 """
 from gazebo_msgs.msg import ModelState
 from geometry_msgs.msg import Point
-from geometry_msgs.msg import Pose
+from geometry_msgs.msg import Transform
 import rospy
 import ParameterLookup
 
@@ -35,9 +35,9 @@ class Robot(object):
         self._frame_id = ParameterLookup.lookupWithDefault(
             '~' + self._resolveString("frame_id"), "base_link")
         # Set the pose to the origin.
-        pose = Pose()
-        pose.orientation.w = 1.0
-        self.recordPose(pose)
+        transform = Transform()
+        transform.rotation.w = 1.0
+        self.recordTransform(transform)
 
     def _initializeKeypoints(self, param_name):
         """!
@@ -85,22 +85,25 @@ class Robot(object):
         @return A string representing the full frame ID.
         """
         full_id = self.getName() + '/' + self._frame_id
-        rospy.logwarn('%s' % full_id)
         return full_id
 
-    def createSetModelStateRequest(self, new_pose=None):
+    def createSetModelStateRequest(self, new_transform=None):
         """!
         Create a gazebo_msgs/ModelState message based on the recorded pose.
-        @param robot_pose The geometry_msgs/Pose that represents the pose to use when
-        creating the message.
-        @return A gazebo_msgs/ModelState containing the robot's pose.
+        @param robot_transform The geometry_msgs/Transform that represents the transform
+        from the global frame to the robot's frame. Used when creating the message.
+        @return A gazebo_msgs/ModelState containing the robot's transform.
         """
         msg = ModelState()
         msg.model_name = self.getName()
-        if new_pose is None:
-            msg.pose = self.getPose()
+        if new_transform is None:
+            transform = self.getTransform()
         else:
-            msg.pose = new_pose
+            transform = new_transform
+        msg.pose.position.x = transform.translation.x
+        msg.pose.position.y = transform.translation.y
+        msg.pose.position.z = transform.translation.z
+        msg.pose.orientation = transform.rotation
         return msg
 
     def getName(self):
@@ -110,18 +113,19 @@ class Robot(object):
         """
         return self._name
 
-    def getPose(self):
+    def getTransform(self):
         """!
-        Get the robot's current pose with the actual z value, not the one out of
-        the camera frame.
-        @return The robot's current pose.
+        Get the robot's current transform from the global frame to the robot's
+        frame. This includes the actual z value, not the one out of the camera frame.
+        @return The robot's current transform.
         """
-        return self._pose
+        return self._transform
 
-    def recordPose(self, pose):
+    def recordTransform(self, transform):
         """!
-        Update the record of the robot's new pose. This should be the pose from
-        the bag file, not the pose to remove the robot from the camera's field of view.
-        @param pose The new pose for the robot.
+        Update the record of the robot's new transform. This should be the transform from
+        the bag file, not the tranform to remove the robot from the camera's field of view.
+        @param transform The new transform for the robot. It represents the transform from the
+        global frame to the frame of the robot.
         """
-        self._pose = pose
+        self._transform = transform
