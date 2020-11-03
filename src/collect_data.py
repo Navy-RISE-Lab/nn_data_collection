@@ -18,7 +18,6 @@ import rosbag
 import rospy
 from sensor_msgs.msg import Image
 import tf2_py
-from tf2_py import BufferCore
 import tf2_ros
 
 
@@ -102,7 +101,7 @@ def initializeReplay():
     # Now, parse the bag file into a tf buffer
     start_time = rospy.Time(bag.get_start_time())
     end_time = rospy.Time(bag.get_end_time())
-    tf_buffer = BufferCore((end_time - start_time))
+    tf_buffer = tf2_py.BufferCore((end_time - start_time))
     for topic, msg, _ in bag.read_messages(topics=['/tf', '/tf_static']):
         for msg_tf in msg.transforms:
             if topic == '/tf_static':
@@ -168,7 +167,7 @@ if __name__ == "__main__":
         parameter='~camera_frame_id', default='camera/base_link')
     # Look up what frame to use as the reference point for all placement.
     global_frame_id = ParameterLookup.lookupWithDefault(
-        parameter='global_frame', default='map')
+        parameter='~global_frame', default='map')
     # Load each robot
     robot_list = initializeRobots()
     # Create the client to tell each robot to move in Gazebo.

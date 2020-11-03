@@ -4,8 +4,10 @@ bag_file: "$(optenv HOME)/Desktop/bag-test.bag"
 simulated_rate: 0.1
 # The frame_id of the camera as represented in the TF tree.
 camera_frame_id: "infrastructure/camera/base_link"
+# The global static frame used to reference all models in Gazebo. Almost always 'map'.
+global_frame: "map"
 # The list of robots to control.
-/robot_list: [athreos, ephara]
+/robot_list: ["athreos", "ephara"]
 
 # Specify the needed values for each robot.
 athreos:
