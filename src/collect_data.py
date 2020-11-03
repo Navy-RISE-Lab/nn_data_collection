@@ -11,10 +11,13 @@ import cv2
 from cv_bridge import CvBridge
 from gazebo_msgs.srv import GetModelState
 from gazebo_msgs.srv import SetModelState
+import ParameterLookup
 from Robot import Robot
 import rosbag
 import rospy
 from sensor_msgs.msg import Image
+import tf2_py
+from tf2_py import BufferCore
 import tf2_ros
 
 
@@ -60,25 +63,22 @@ def initializeBackgroundSubtractor(robot_list, gazebo_set_pose_client):
     return background_subtractor
 
 
-def initializeBagFile():
+def initializeReplay():
     """!
-    This function looks up the name of the bag file from the parameter server and loads that bag file. It also determines
-    the rate at which the code should step through the bag file.
-    @return A tuple with - (An object containing the loaded bagfile, a float representing the period at which
-    it should be stepped through)
-    @throw rospy.ROSInitException Thrown if there is no bag file parameter on the server.
-    @throw rosbag.ROSBagException Thrown if the bag file can't be loaded for some reason.
+    @brief Load the TF tree from the provided bag file.
+
+    This initialization takes a bag file, as provided by the user on the parameter
+    server and reads the entire TF tree into a buffer for use in replaying.
+    @return A tuple containing:
+        1. The tf buffer
+        2. A rospy.Time of the start time of the bag file
+        3. A rospy.Time of the end time of the bag file
+        4. A rospy.Duration of the period used during processing
+    @throw rospy.ROSInitException Thrown if the bag file can't be opened or found.
     """
-    # Assume the parameter specifying the bag file name is a private parameter.
-    parameter_name = '~bag_file'
-    # Make sure it exists before trying to read it.
-    if not rospy.has_param(parameter_name):
-        # Throw an error if it doesn't.
-        error_string = 'Please specify the bag file to replay on the parameter "bag_file"'
-        rospy.logfatal(error_string)
-        raise rospy.ROSInitException(error_string)
-    # If this point is reached, then the parameter at least exists.
-    bag_file = rospy.get_param(parameter_name)
+    rospy.loginfo('Loading bag file...')
+    # Determine where the bag file is located via parameter server.
+    bag_file = ParameterLookup.lookup(parameter='~bag_file')
     # Open the bag file. This might throw an error, so catch it and send a warning
     # to the user.
     try:
@@ -86,18 +86,26 @@ def initializeBagFile():
     except Exception as ex:
         error_string = 'Unable to open {bag}: {error}'.format(
             bag=bag_file, error=ex)
-        rospy.logfatal(error_string)
+        rospy.logfatal(msg=error_string)
         raise rospy.ROSInitException(error_string)
     # If this point is reached, the bag file is loaded and ready.
     # Now look up the simulated rate with the same method as the bag parameter.
-    parameter_name = '~simulated_rate'
-    default_rate = 30.0
-    if not rospy.has_param(parameter_name):
-        rospy.logwarn(
-            'No simulated rate specificed on the parameter "simulated_rate" Using a default of %f hz instead.', default_rate)
-    simulated_rate = rospy.get_param(parameter_name, default_rate)
-    simulated_period = 1.0 / simulated_rate
-    return (bag, simulated_period)
+    rate = ParameterLookup.lookupWithDefault(
+        parameter='~simulated_rate', default=30.0)
+    period = rospy.Duration(secs=(1.0 / rate))
+    # Now, parse the bag file into a tf buffer
+    start_time = rospy.Time(bag.get_start_time())
+    end_time = rospy.Time(bag.get_end_time())
+    tf_buffer = BufferCore((end_time - start_time))
+    for topic, msg, _ in bag.read_messages(topics=['/tf', '/tf_static']):
+        for msg_tf in msg.transforms:
+            if topic == '/tf_static':
+                tf_buffer.set_transform_static(msg_tf, 'default_authority')
+            else:
+                tf_buffer.set_transform(msg_tf, 'default_authority')
+    # Now that everything is loaded, we don't need the bag file.
+    bag.close()
+    return (tf_buffer, start_time, end_time, period)
 
 
 def initializeRobots():
@@ -110,17 +118,10 @@ def initializeRobots():
     specified.
     """
     # Determine the list of robots and error if not found.
-    parameter_name = '/robot_list'
-    if not rospy.has_param(parameter_name):
-        error_string = 'No robot names specified on {param}'.format(
-            param=parameter_name)
-        rospy.logfatal(error_string)
-        raise rospy.ROSInitException(error_string)
-    robot_names = rospy.get_param(parameter_name)
+    robot_names = ParameterLookup.lookup('/robot_list')
     # Throw an error if there are no robots specified.
     if len(robot_names) < 1:
-        error_string = 'Must specify at least one robot in {param}'.format(
-            param=parameter_name)
+        error_string = 'Must specify at least one robot in /robot_list'
         rospy.logfatal(error_string)
         raise rospy.ROSInitException(error_string)
     # There is a chance the user specifies only a single robot without brackets, which would make
@@ -133,21 +134,6 @@ def initializeRobots():
     for name in robot_names:
         robot_list.append(Robot(name))
     return robot_list
-
-
-def lookupCameraFrame():
-    """!
-    This function looks up the name of the frame_id used for the camera in TF for use in determining distances
-    and projections. It uses a default if not found.
-    @return The string representing the camera's frame_id in the TF tree.
-    """
-    parameter_name = '~camera_frame_id'
-    default_camera_frame = 'camera/base_link'
-    if not rospy.has_param(parameter_name):
-        rospy.logwarn('Frame parameter not found on {param}, using {default} instead'.format(
-            param=parameter_name, default=default_camera_frame))
-    camera_frame = rospy.get_param(parameter_name, default_camera_frame)
-    return camera_frame
 
 
 def moveRobot(client, pose_request):
@@ -168,10 +154,14 @@ def moveRobot(client, pose_request):
 
 if __name__ == "__main__":
     rospy.init_node(name='collect_data')
-    # Load bag file
-    (bag, simulated_period) = initializeBagFile()
+    # Load the buffer containing the motion record from the bag file.
+    (tf_buffer, start_time, end_time, period) = initializeReplay()
     # Setup camera
-    camera_frame_id = lookupCameraFrame()
+    camera_frame_id = ParameterLookup.lookupWithDefault(
+        parameter='~camera_frame_id', default='camera/base_link')
+    # Look up what frame to use as the reference point for all placement.
+    global_frame_id = ParameterLookup.lookupWithDefault(
+        parameter='global_frame', default='map')
     # Load each robot
     robot_list = initializeRobots()
     # Create the client to tell each robot to move in Gazebo.
@@ -181,21 +171,18 @@ if __name__ == "__main__":
     gazebo_client = rospy.ServiceProxy(
         name=gazebo_client_name, service_class=SetModelState)
     # Create the TF lookup
-    tf_buffer = tf2_ros.Buffer()
-    tf_listener = tf2_ros.TransformListener(tf_buffer)
+    gazebo_tf_buffer = tf2_ros.Buffer()
+    gazebo_tf_listener = tf2_ros.TransformListener(gazebo_tf_buffer)
     # Set up the subtractor and initialize
     background_subtractor = initializeBackgroundSubtractor(
         robot_list, gazebo_client)
-    # Start the time at the begining and iterate in chunks of the period provided.
-    time_window_start = bag.get_start_time()
-    time_window_end = time_window_start + simulated_period
     # We will need a bridge to convert sensor_msgs/Image and cv::Mat
     bridge = CvBridge()
     # Loop through the whole bag file until the end is reached. The two times above
     # provide a moving window. The last iteration we want is when the window crosses
     # the bag end time. The next iteration would have both start and end of the
     # window past the bag file then. So use that as the break.
-    while time_window_start < bag.get_end_time():
+    while start_time < end_time:
         # Start by moving every robot out of the way. They don't need to be in new
         # spots. They will also be collision free, since they either have a pose from
         # the bag file or the initial poses specified at launch.
@@ -208,18 +195,22 @@ if __name__ == "__main__":
                 exit()
         # Now, go through each robot and move it into the scene.
         for robot in robot_list:
-            (topics, msgs, times) = bag.read_messages(topics=robot.pose_topic,
-                                                      start_time=time_window_start, end_time=time_window_end)
+            # Look up each robot's pose from the bag file TF tree.
+            try:
+                robot_transform = tf_buffer.lookup_transform_core(
+                    robot.getFullFrame(), global_frame_id, start_time)
+            except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException), argument:
+                rospy.logwarn('%s' % argument)
             # We only care about the first message, since there is one pose per time chunk.
-            pose = msgs.message
-            # Move the robot to that pose
-            # Sleep briefly to allow the image to update.
-            rospy.sleep(0.25)
-            # Capture an image
-            image = rospy.wait_for_message(
-                topic='camera/image_raw', topic_type=Image)
-            # Convert to cv::Mat
-            image_mat = bridge.imgmsg_to_cv2(img_msg=image)
+            # pose = msgs.message
+            # # Move the robot to that pose
+            # # Sleep briefly to allow the image to update.
+            # rospy.sleep(0.25)
+            # # Capture an image
+            # image = rospy.wait_for_message(
+            #     topic='camera/image_raw', topic_type=Image)
+            # # Convert to cv::Mat
+            # image_mat = bridge.imgmsg_to_cv2(img_msg=image)
             # Use the background subtractor to find the robot. Be sure to set the
             # learning rate to 0 to prevent updating the background image.
             # Convert the mask into the robot's ID.
@@ -245,8 +236,5 @@ if __name__ == "__main__":
         # Create bounding boxes for each robot for YOLO
         # Write everything to file
         # Update the times
-        time_window_start = time_window_end
-        time_window_end += simulated_period
+        start_time += period
     # When this is finally done, record any meta information needed by networks.
-    # Close the bag file
-    bag.close()

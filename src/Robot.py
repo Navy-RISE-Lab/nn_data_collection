@@ -25,13 +25,15 @@ class Robot(object):
         # Set the name
         self._name = name
         # Look up the class number and associated ID
-        self._class_id = ParameterLookup.lookup('class')
-        self._id = ParameterLookup.lookup("id")
+        self._class_id = ParameterLookup.lookup(
+            '~' + self._resolveString('class'))
+        self._id = ParameterLookup.lookup('~' + self._resolveString("id"))
         # Also look up the keypoints used for this robot
-        self._keypoints = self._initializeKeypoints("keypoints")
+        self._keypoints = self._initializeKeypoints(
+            '~' + self._resolveString("keypoints"))
         # Determine what name to use to find the robot in the TF tree.
         self._frame_id = ParameterLookup.lookupWithDefault(
-            "frame_id", "base_link")
+            '~' + self._resolveString("frame_id"), "base_link")
         # Set the pose to the origin.
         pose = Pose()
         pose.orientation.w = 1.0
@@ -66,8 +68,25 @@ class Robot(object):
             keypoints.append(keypoint_message)
         return keypoints
 
+    def _resolveString(self, value):
         """!
+        @brief Prepend "<name>/" to the provided term.
+        @param value The value to prepend.
+        @return A string - "<name>/value"
         """
+        result = self.getName() + '/' + value
+        return result
+
+    def getFullFrame(self):
+        """!
+        Returns the full frame ID used to find this robot on the TF tree. This is assumed
+        to take the form <robot_name>/<frame> where <frame> was specified via parameter
+        server.
+        @return A string representing the full frame ID.
+        """
+        full_id = self.getName() + '/' + self._frame_id
+        rospy.logwarn('%s' % full_id)
+        return full_id
 
     def createSetModelStateRequest(self, new_pose=None):
         """!

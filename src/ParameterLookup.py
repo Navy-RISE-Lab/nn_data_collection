@@ -37,7 +37,7 @@ def lookupWithDefault(parameter, default):
     """
     if not rospy.has_param(param_name=parameter):
         warn_string = 'Parameter not found for {param}. Using default instead: {default}'.format(
-            name=parameter, default=default)
+            param=parameter, default=default)
         rospy.logwarn(warn_string)
     result = rospy.get_param(param_name=parameter, default=default)
     return result
