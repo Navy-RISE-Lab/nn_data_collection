@@ -49,7 +49,7 @@ class STVNet(object):
             cv2.imwrite(filename=segment_path + image_name,
                         img=robot.getPixelMask())
             # Do the keypoint projections here
-            self._count += 1
+        self._count += 1
         pass
 
     def _createDirIfNotFound(self, path):
