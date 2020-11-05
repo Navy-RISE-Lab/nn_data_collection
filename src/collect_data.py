@@ -21,20 +21,22 @@ import tf2_py
 import tf2_ros
 
 
-def captureImage():
+def captureImage(sleep_duration=1.0):
     """!
     @brief Captures the latest image from Gazebo.
 
-    it gets updated in all sensors and visuals. This is related
+    @note There is a lag between when Gazebo moves a model and
+    when it gets updated in all sensors and visuals. This is related
     to the processing speed and (to the best of my knowledge),
     can't be detected programatticaly. The best bet is to just
     wait a little bit before capturing any images to allow the
     simulations to update.
+    @param sleep_duration The amount to sleep before capturing the image
+    in order to let Gazebo finish updates.
     @return A cv2::Mat of the latest scene in Gazebo.
     """
-    GAZEBO_IMAGE_WAIT = 1.0
     bridge = CvBridge()
-    rospy.sleep(duration=GAZEBO_IMAGE_WAIT)
+    rospy.sleep(duration=sleep_duration)
     image = rospy.wait_for_message(
         topic='camera/image_raw', topic_type=Image)
     image_mat = bridge.imgmsg_to_cv2(img_msg=image)
@@ -75,8 +77,10 @@ def initializeBackgroundSubtractor(robot_list, gazebo_set_pose_client):
         robot_new_pose_request.pose.position.z = 1e6
         moveRobot(gazebo_set_pose_client, robot_new_pose_request)
     # Capture N images and apply to subtractor
+    rospy.sleep(2.0)
     for _ in range(background_history):
-        image = captureImage()
+        # Sleep long enough for any noise to update
+        image = captureImage(sleep_duration=0.25)
         background_subtractor.apply(image)
     return background_subtractor
 
