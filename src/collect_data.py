@@ -21,6 +21,26 @@ import tf2_py
 import tf2_ros
 
 
+def captureImage():
+    """!
+    @brief Captures the latest image from Gazebo.
+
+    it gets updated in all sensors and visuals. This is related
+    to the processing speed and (to the best of my knowledge),
+    can't be detected programatticaly. The best bet is to just
+    wait a little bit before capturing any images to allow the
+    simulations to update.
+    @return A cv2::Mat of the latest scene in Gazebo.
+    """
+    GAZEBO_IMAGE_WAIT = 1.0
+    bridge = CvBridge()
+    rospy.sleep(duration=GAZEBO_IMAGE_WAIT)
+    image = rospy.wait_for_message(
+        topic='camera/image_raw', topic_type=Image)
+    image_mat = bridge.imgmsg_to_cv2(img_msg=image)
+    return image_mat
+
+
 def initializeBackgroundSubtractor(robot_list, gazebo_set_pose_client):
     """!
     Create the background subtractor. Then, manipulate the Gazebo environment to allow
@@ -54,17 +74,10 @@ def initializeBackgroundSubtractor(robot_list, gazebo_set_pose_client):
         robot_new_pose_request = robot.createSetModelStateRequest()
         robot_new_pose_request.pose.position.z = 1e6
         moveRobot(gazebo_set_pose_client, robot_new_pose_request)
-    # Sleep briefly to allow the robots to finish moving.
-    rospy.sleep(duration=1.0)
     # Capture N images and apply to subtractor
-    # We need to convert sensor_msgs/Image to cv2::Mat
-    bridge = CvBridge()
-    # cv_image = bridge.imgmsg_to_cv2(image_message, desired_encoding='passthrough')
     for _ in range(background_history):
-        image = rospy.wait_for_message(
-            topic='camera/image_raw', topic_type=Image)
-        image_mat = bridge.imgmsg_to_cv2(img_msg=image)
-        background_subtractor.apply(image_mat)
+        image = captureImage()
+        background_subtractor.apply(image)
     return background_subtractor
 
 
@@ -182,8 +195,11 @@ if __name__ == "__main__":
     # Set up the subtractor and initialize
     background_subtractor = initializeBackgroundSubtractor(
         robot_list, gazebo_client)
-    # We will need a bridge to convert sensor_msgs/Image and cv::Mat
-    bridge = CvBridge()
+    # Create a subscriber to the camera. However, this isn't actually used. The system
+    # uses wait_for_message to get the latest image. However, Gazebo won't update sensor
+    # simulations unless there is a subscriber. So this tricks Gazebo into doing so.
+    name = rospy.Subscriber(name='camera/image_raw',
+                            data_class=Image, callback=None, queue_size=1)
     # Loop through the whole bag file until the end is reached. The two times above
     # provide a moving window. The last iteration we want is when the window crosses
     # the bag end time. The next iteration would have both start and end of the
@@ -212,16 +228,11 @@ if __name__ == "__main__":
             robot.recordTransform(robot_transform.transform)
             # Move the robot and allow time for Gazebo to update
             moveRobot(gazebo_client, robot.createSetModelStateRequest())
-            rospy.sleep(2.0)
-            # Capture an image
-            image = rospy.wait_for_message(
-                topic='camera/image_raw', topic_type=Image)
-            # Convert to cv::Mat
-            image_mat = bridge.imgmsg_to_cv2(img_msg=image)
+            image = captureImage()
             # Use the background subtractor to find the robot. Be sure to set the
             # learning rate to 0 to prevent updating the background image.
             foreground_mask = background_subtractor.apply(
-                image_mat, learningRate=0.0)
+                image, learningRate=0.0)
             robot.recordPixelMask(foreground_mask)
             robot_new_pose_request = robot.createSetModelStateRequest()
             robot_new_pose_request.pose.position.z = 1e6
@@ -236,14 +247,11 @@ if __name__ == "__main__":
             if not result:
                 rospy.logfatal('Unable to move robot, killing processing.')
                 exit()
-        # Wait a bit for the image to update.
-        rospy.sleep(2.0)
         # Capture an image
-        # @todo Make this its own function
-        image = rospy.wait_for_message(
-            topic='camera/image_raw', topic_type=Image)
-        # Convert to cv::Mat
-        image_mat = bridge.imgmsg_to_cv2(img_msg=image)
+        image = captureImage()
+        # Have each output format write their information.
+        for writer in data_writers:
+            writer.outputScene(robot_list, image, None)
         # Look up the robot's 3D pose
         # Determine the robot's distance from the camera
         # Project the key points into the camera
