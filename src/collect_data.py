@@ -12,6 +12,7 @@ from cv_bridge import CvBridge
 from gazebo_msgs.srv import GetModelState
 from gazebo_msgs.srv import SetModelState
 from geometry_msgs.msg import Transform
+import label_writers
 import ParameterLookup
 from Robot import Robot
 import rosbag
@@ -176,6 +177,8 @@ def moveRobot(client, pose_request):
 
 if __name__ == "__main__":
     rospy.init_node(name='collect_data')
+    # Set up the different data writers.
+    data_writers = [label_writers.YOLO('yolo')]
     # Load the buffer containing the motion record from the bag file.
     (tf_buffer, start_time, end_time, period) = initializeReplay()
     current_time = start_time

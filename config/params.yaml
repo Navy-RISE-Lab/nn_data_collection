@@ -6,6 +6,11 @@ simulated_rate: 0.1
 camera_frame_id: "infrastructure/camera/base_link"
 # The global static frame used to reference all models in Gazebo. Almost always 'map'.
 global_frame: "map"
+
+# Specify values needed by any data writing format.
+yolo:
+    output_folder: "$(optenv HOME)/Desktop/output"
+
 # The list of robots to control.
 /robot_list: ["athreos", "ephara"]
 
