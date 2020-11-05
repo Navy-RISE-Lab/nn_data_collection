@@ -202,14 +202,14 @@ if __name__ == "__main__":
     # Create the TF lookup
     gazebo_tf_buffer = tf2_ros.Buffer()
     gazebo_tf_listener = tf2_ros.TransformListener(gazebo_tf_buffer)
-    # Set up the subtractor and initialize
-    background_subtractor = initializeBackgroundSubtractor(
-        robot_list, gazebo_client)
     # Create a subscriber to the camera. However, this isn't actually used. The system
     # uses wait_for_message to get the latest image. However, Gazebo won't update sensor
     # simulations unless there is a subscriber. So this tricks Gazebo into doing so.
     name = rospy.Subscriber(name='camera/image_raw',
                             data_class=Image, callback=None, queue_size=1)
+    # Set up the subtractor and initialize
+    background_subtractor = initializeBackgroundSubtractor(
+        robot_list, gazebo_client)
     # Loop through the whole bag file until the end is reached. The two times above
     # provide a moving window. The last iteration we want is when the window crosses
     # the bag end time. The next iteration would have both start and end of the
