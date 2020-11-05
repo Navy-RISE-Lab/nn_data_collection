@@ -53,7 +53,7 @@ def initializeBackgroundSubtractor(robot_list, gazebo_set_pose_client):
     background_history = 100
     # ! @todo Explore how shadow detection impacts the results.
     background_subtractor = cv2.createBackgroundSubtractorMOG2(
-        history=background_history, detectShadows=False)
+        history=background_history, varThreshold=500, detectShadows=False)
     # Create a client to determine where each robot is located within the Gazebo environment
     gazebo_get_pose_name = '/gazebo/get_model_state'
     rospy.loginfo('Waiting to find robot poses...')
