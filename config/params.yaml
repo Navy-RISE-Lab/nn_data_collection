@@ -9,7 +9,9 @@ global_frame: "map"
 
 # Specify values needed by any data writing format.
 yolo:
-    output_folder: "$(optenv HOME)/Desktop/output"
+    output_folder: "$(optenv HOME)/Desktop/results/YOLO_Output"
+stvnet:
+    output_folder: "$(optenv HOME)/Desktop/results/STVNet_Output"
 
 # The list of robots to control.
 /robot_list: ["athreos", "ephara"]

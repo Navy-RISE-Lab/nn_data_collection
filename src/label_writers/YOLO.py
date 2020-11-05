@@ -1,5 +1,7 @@
 import cv2
+import os
 import ParameterLookup
+import rospy
 
 
 class YOLO(object):
@@ -30,6 +32,10 @@ class YOLO(object):
         # This is used to prepend image names, so make sure it ends in a '/'
         if self._output_location[-1] != '/':
             self._output_location += '/'
+        if not os.path.exists(self._output_location):
+            rospy.logwarn(msg='Output directory {path} did not originally exist. Creating it'.format(
+                path=self._output_location))
+            os.makedirs(self._output_location)
         # Count how many images have been written for use in the names.
         self._count = 0
 

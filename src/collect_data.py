@@ -22,7 +22,7 @@ import tf2_py
 import tf2_ros
 
 
-def captureImage(sleep_duration=1.0):
+def captureImage(sleep_duration=2.0):
     """!
     @brief Captures the latest image from Gazebo.
 
@@ -178,7 +178,10 @@ def moveRobot(client, pose_request):
 if __name__ == "__main__":
     rospy.init_node(name='collect_data')
     # Set up the different data writers.
-    data_writers = [label_writers.YOLO('yolo')]
+    data_writers = [
+        label_writers.YOLO('yolo'),
+        label_writers.STVNet('stvnet')
+    ]
     # Load the buffer containing the motion record from the bag file.
     (tf_buffer, start_time, end_time, period) = initializeReplay()
     current_time = start_time
