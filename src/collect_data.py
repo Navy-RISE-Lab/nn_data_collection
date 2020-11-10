@@ -17,6 +17,7 @@ import ParameterLookup
 from Robot import Robot
 import rosbag
 import rospy
+from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import Image
 import tf2_py
 import tf2_ros
@@ -34,14 +35,16 @@ def captureImage(sleep_duration=2.0):
     simulations to update.
     @param sleep_duration The amount to sleep before capturing the image
     in order to let Gazebo finish updates.
-    @return A cv2::Mat of the latest scene in Gazebo.
+    @return A cv2::Mat of the latest scene in Gazebo and a sensor_msgs/CameraInfo message.
     """
     bridge = CvBridge()
     rospy.sleep(duration=sleep_duration)
     image = rospy.wait_for_message(
         topic='camera/image_raw', topic_type=Image)
     image_mat = bridge.imgmsg_to_cv2(img_msg=image)
-    return image_mat
+    camera_info = rospy.wait_for_message(
+        topic='camera/camera_info', topic_type=CameraInfo)
+    return (image_mat, camera_info)
 
 
 def initializeBackgroundSubtractor(robot_list, gazebo_set_pose_client):
@@ -81,7 +84,7 @@ def initializeBackgroundSubtractor(robot_list, gazebo_set_pose_client):
     rospy.sleep(2.0)
     for _ in range(background_history):
         # Sleep long enough for any noise to update
-        image = captureImage(sleep_duration=0.25)
+        (image, _) = captureImage(sleep_duration=0.25)
         background_subtractor.apply(image)
     return background_subtractor
 
@@ -238,7 +241,7 @@ if __name__ == "__main__":
             robot.recordTransform(robot_transform.transform)
             # Move the robot and allow time for Gazebo to update
             moveRobot(gazebo_client, robot.createSetModelStateRequest())
-            image = captureImage()
+            (image, _) = captureImage()
             # Use the background subtractor to find the robot. Be sure to set the
             # learning rate to 0 to prevent updating the background image.
             foreground_mask = background_subtractor.apply(
@@ -258,10 +261,10 @@ if __name__ == "__main__":
                 rospy.logfatal('Unable to move robot, killing processing.')
                 exit()
         # Capture an image
-        image = captureImage()
+        (image, camera_info) = captureImage()
         # Have each output format write their information.
         for writer in data_writers:
-            writer.outputScene(robot_list, image, None)
+            writer.outputScene(robot_list, image, camera_info)
         # Look up the robot's 3D pose
         # Determine the robot's distance from the camera
         # Project the key points into the camera

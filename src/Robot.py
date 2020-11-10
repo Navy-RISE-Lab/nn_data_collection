@@ -77,6 +77,13 @@ class Robot(object):
         result = self.getName() + '/' + value
         return result
 
+    def getClassID(self):
+        """!
+        Return the class ID used for this robot.
+        @return The class ID, as described by parameter.
+        """
+        return self._class_id
+
     def getFullFrame(self):
         """!
         Returns the full frame ID used to find this robot on the TF tree. This is assumed
@@ -86,6 +93,20 @@ class Robot(object):
         """
         full_id = self.getName() + '/' + self._frame_id
         return full_id
+
+    def getID(self):
+        """!
+        Returns the unique ID for this particular robot.
+        @return The unique ID, as specified by parameter.
+        """
+        return self._id
+
+    def getKeypoints(self):
+        """!
+        @brief Return the list of keypoint Points.
+        @return A list of geometry_msgs/Point keypoints.
+        """
+        return self._keypoints
 
     def createSetModelStateRequest(self, new_transform=None):
         """!
