@@ -33,6 +33,9 @@ class STVNet(object):
         # Create a TF listener to transform key points.
         self._tf_buffer = tf2_ros.Buffer()
         self._tf_listener = tf2_ros.TransformListener(buffer=self._tf_buffer)
+        timeout_param = '~' + self._name + '/tf_timeout'
+        self._tf_timeout = ParameterLookup.lookupWithDefault(
+            parameter=timeout_param, default=2.0)
         # Look up the camera frame ID to project points.
         self._camera_frame_id = ParameterLookup.lookupWithDefault(
             parameter='~camera_frame_id', default='camera/base_link')
@@ -68,12 +71,18 @@ class STVNet(object):
             for keypoint in keypoints:
                 (x, y) = self._projectPointIntoImage(point=keypoint,
                                                      source_frame_id=robot.getFullFrame(), camera_info=camera_info)
-                scaled_x = x / raw_image.shape[0]
-                scaled_y = y / raw_image.shape[1]
+                # For some reason, cv stores this as a ndarray instead of Mat. So use the shape
+                # for dimensions. It is (rows x columns).
+                scaled_x = x / raw_image.shape[1]
+                scaled_y = y / raw_image.shape[0]
+                cv2.circle(img=raw_image, center=(int(x), int(y)), radius=3,
+                           color=(0, 255, 0), thickness=-1)
                 label_file.write(str(scaled_x) + ' ' + str(scaled_y) + ' ')
             label_file.write('\n')
             label_file.close()
         self._count += 1
+        cv2.imshow('image', raw_image)
+        cv2.waitKey(0)
         pass
 
     def _createDirIfNotFound(self, path):
@@ -112,7 +121,7 @@ class STVNet(object):
         point_robot_stamped.point = point
         # Do the transform. Give a timeout to let it wait for the latest TF if it would otherwise
         # need to extrapolate.
-        timeout = rospy.Duration(1.0)
+        timeout = rospy.Duration(self._tf_timeout)
         point_camera_stamped = self._tf_buffer.transform(
             object_stamped=point_robot_stamped, target_frame=self._camera_frame_id, timeout=timeout)
         # Use CV's projectPoints, but it needs input as numpy so convert everything.

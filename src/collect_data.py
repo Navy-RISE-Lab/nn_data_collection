@@ -190,7 +190,7 @@ if __name__ == "__main__":
     current_time = start_time
     # Setup camera
     camera_frame_id = ParameterLookup.lookupWithDefault(
-        parameter='~camera_frame_id', default='camera/base_link')
+        parameter='~camera_frame_id', default='camera/optical_link')
     # Look up what frame to use as the reference point for all placement.
     global_frame_id = ParameterLookup.lookupWithDefault(
         parameter='~global_frame', default='map')

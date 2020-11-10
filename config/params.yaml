@@ -2,8 +2,9 @@
 bag_file: "$(optenv HOME)/Desktop/bag-test.bag"
 # The rate at which to step through the bag file, in seconds.
 simulated_rate: 0.1
-# The frame_id of the camera as represented in the TF tree.
-camera_frame_id: "infrastructure/camera/base_link"
+# The frame_id of the camera as represented in the TF tree. This should follow usual camera
+# frame conventions of +Z extending forward perpendicular to the lens
+camera_frame_id: "infrastructure/camera/optical_link"
 # The global static frame used to reference all models in Gazebo. Almost always 'map'.
 global_frame: "map"
 
@@ -23,7 +24,16 @@ athreos:
     frame_id: "base_link"
     # These are the key points to look for in detection, relative to the origin of the
     # frame specified in "frame_id"
-    keypoints: [[0.35, -0.3, 0.0], [0.35, 0.3, 0.0], [-0.4, 0.3, 0.0], [-0.4, -0.3, 0.0]]
+    keypoints: [
+        [0.35, -0.3, 0.0],
+        [0.35, 0.3, 0.0],
+        [-0.4, 0.3, 0.0],
+        [-0.4, -0.3, 0.0],
+        [0.35, -0.3, 0.25],
+        [0.35, 0.3, 0.25],
+        [-0.4, 0.3, 0.25],
+        [-0.4, -0.3, 0.25]
+        ]
 
 ephara:
     class: 15
@@ -31,4 +41,13 @@ ephara:
     frame_id: "base_link"
     # These are the key points to look for in detection, relative to the origin of the
     # frame specified in "frame_id"
-    keypoints: [[0.35, -0.3, 0.0], [0.35, 0.3, 0.0], [-0.4, 0.3, 0.0], [-0.4, -0.3, 0.0]]
+    keypoints: [
+        [0.35, -0.3, 0.0],
+        [0.35, 0.3, 0.0],
+        [-0.4, 0.3, 0.0],
+        [-0.4, -0.3, 0.0],
+        [0.35, -0.3, 0.25],
+        [0.35, 0.3, 0.25],
+        [-0.4, 0.3, 0.25],
+        [-0.4, -0.3, 0.25]
+        ]
