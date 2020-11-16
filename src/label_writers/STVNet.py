@@ -129,13 +129,12 @@ class STVNet(object):
         point_camera[0][0] = point_camera_stamped.point.x
         point_camera[0][1] = point_camera_stamped.point.y
         point_camera[0][2] = point_camera_stamped.point.z
-        distortion = numpy.array(camera_info.D)
         intrinsic = numpy.array(camera_info.K).reshape(3, 3)
         # There is no translation or rotation needed
         zeros = numpy.zeros(shape=(3, 1))
         # Do the actual conversion. The second argument is the Jacobian, which isn't needed.
         (point_image, _) = cv2.projectPoints(objectPoints=point_camera,
-                                             rvec=zeros, tvec=zeros, cameraMatrix=intrinsic, distCoeffs=distortion)
+                                             rvec=zeros, tvec=zeros, cameraMatrix=intrinsic, distCoeffs=None)
         # Extract the points. It outputs a 3D matrix, so go ahead and reduce the dimensions,
         # which are mostly empty.
         point_image = point_image.flatten()

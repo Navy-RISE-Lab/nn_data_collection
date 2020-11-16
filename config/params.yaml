@@ -21,7 +21,7 @@ stvnet:
 athreos:
     class: 15
     id: 7
-    frame_id: "base_link"
+    frame_id: "base_footprint"
     # These are the key points to look for in detection, relative to the origin of the
     # frame specified in "frame_id"
     keypoints: [
@@ -38,7 +38,7 @@ athreos:
 ephara:
     class: 15
     id: 2
-    frame_id: "base_link"
+    frame_id: "base_footprint"
     # These are the key points to look for in detection, relative to the origin of the
     # frame specified in "frame_id"
     keypoints: [
