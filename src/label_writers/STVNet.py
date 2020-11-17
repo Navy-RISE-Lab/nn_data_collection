@@ -75,14 +75,10 @@ class STVNet(object):
                 # for dimensions. It is (rows x columns).
                 scaled_x = x / raw_image.shape[1]
                 scaled_y = y / raw_image.shape[0]
-                cv2.circle(img=raw_image, center=(int(x), int(y)), radius=3,
-                           color=(0, 255, 0), thickness=-1)
                 label_file.write(str(scaled_x) + ' ' + str(scaled_y) + ' ')
             label_file.write('\n')
             label_file.close()
         self._count += 1
-        cv2.imshow('image', raw_image)
-        cv2.waitKey(0)
         pass
 
     def _createDirIfNotFound(self, path):

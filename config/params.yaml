@@ -1,7 +1,7 @@
 # The location of the bag file to replay. This can accept environment args (ex. $(optenv HOME))
 bag_file: "$(optenv HOME)/Desktop/bag-test.bag"
 # The rate at which to step through the bag file, in seconds.
-simulated_rate: 0.1
+simulated_rate: 0.5
 # The frame_id of the camera as represented in the TF tree. This should follow usual camera
 # frame conventions of +Z extending forward perpendicular to the lens
 camera_frame_id: "infrastructure/camera/optical_link"

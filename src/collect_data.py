@@ -89,12 +89,15 @@ def initializeBackgroundSubtractor(robot_list, gazebo_set_pose_client):
     return background_subtractor
 
 
-def initializeReplay():
+def initializeReplay(global_frame_id, robot_list):
     """!
     @brief Load the TF tree from the provided bag file.
 
     This initialization takes a bag file, as provided by the user on the parameter
     server and reads the entire TF tree into a buffer for use in replaying.
+    @param global_frame_id The global refernce frame used by Gazebo, often 'map'
+    @param robot_list The list of robots in the simulation. Used to determine the start
+    and end times that have valid TF transforms for all robots.
     @return A tuple containing:
         1. The tf buffer
         2. A rospy.Time of the start time of the bag file
@@ -131,6 +134,43 @@ def initializeReplay():
                 tf_buffer.set_transform(msg_tf, 'default_authority')
     # Now that everything is loaded, we don't need the bag file.
     bag.close()
+    # Find the first start_time that has a valid transform for every single robot.
+    good_start_time = False
+    # This only finishes if every robot has a viable transform at this time step
+    while not good_start_time and start_time < end_time:
+        good_start_time = True
+        for robot in robot_list:
+            (is_good, _) = tf_buffer.can_transform_core(
+                global_frame_id, robot.getFullFrame(), start_time)
+            good_start_time = good_start_time and is_good
+        if not good_start_time:
+            start_time += period
+    # If the start time is now greater than the end time, then there were no
+    # time frames that had valid transforms for every robot. This is a problem.
+    if not start_time < end_time:
+        error_string = 'Unable to find valid transforms for all robots in bag file.'
+        rospy.logfatal(error_string)
+        raise rospy.exceptions.ROSInitException(error_string)
+    # Now do the same thing for the end time, but decrement instead. The end time
+    # is only a gate on when the whole simulation should end, so it does not have to
+    # be a whole number of increments from start time. Therefore, just start at the
+    # end of the bag file.
+    good_end_time = False
+    # You technically need to watch for the end > start since there may be a specific
+    # setup that only has frame interpolation in a very narrow time range and if period
+    # is larger than that range, end_time is liable to never exist within that range.
+    while not good_end_time and end_time > start_time:
+        good_end_time = True
+        for robot in robot_list:
+            (is_good, _) = tf_buffer.can_transform_core(
+                global_frame_id, robot.getFullFrame(), end_time)
+            good_end_time = good_end_time and is_good
+        if not good_end_time:
+            end_time -= period
+    if not end_time > start_time:
+        error_string = 'Unable to find valid transforms for all robots in bag file.'
+        rospy.logfatal(error_string)
+        raise rospy.exceptions.ROSInitException(error_string)
     return (tf_buffer, start_time, end_time, period)
 
 
@@ -185,9 +225,6 @@ if __name__ == "__main__":
         label_writers.YOLO('yolo'),
         label_writers.STVNet('stvnet')
     ]
-    # Load the buffer containing the motion record from the bag file.
-    (tf_buffer, start_time, end_time, period) = initializeReplay()
-    current_time = start_time
     # Setup camera
     camera_frame_id = ParameterLookup.lookupWithDefault(
         parameter='~camera_frame_id', default='camera/optical_link')
@@ -196,6 +233,10 @@ if __name__ == "__main__":
         parameter='~global_frame', default='map')
     # Load each robot
     robot_list = initializeRobots()
+    # Load the buffer containing the motion record from the bag file.
+    (tf_buffer, start_time, end_time, period) = initializeReplay(
+        global_frame_id, robot_list)
+    current_time = start_time
     # Create the client to tell each robot to move in Gazebo.
     gazebo_client_name = '/gazebo/set_model_state'
     rospy.loginfo('Waiting for Gazebo to start...')
