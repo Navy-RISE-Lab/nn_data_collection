@@ -323,4 +323,6 @@ if __name__ == "__main__":
         # Update the times
         current_time += period
     # When this is finally done, record any meta information needed by networks.
+    for writer in data_writers:
+        writer.finalizeOutput(robot_list)
     rospy.loginfo('100%% completed')
