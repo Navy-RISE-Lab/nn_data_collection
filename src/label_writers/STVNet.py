@@ -1,14 +1,8 @@
 import cv2
-import numpy
-import os
-import ParameterLookup
-import Robot
-import rospy
-from tf2_geometry_msgs import PointStamped
-import tf2_ros
+from label_writers import LabelWriterBase
 
 
-class STVNet(object):
+class STVNet(LabelWriterBase):
     """
     This module writes formatted data to file following the format used
     for STVNet described in https://github.com/sgawalsh/stvNet/issues/2.
@@ -20,25 +14,15 @@ class STVNet(object):
         @param name The name of this particular data writer. Used to look
         up values on the parameter server.
         """
-        self._name = name
-        # Look up where the data should go.
-        output_param = '~' + self._name + '/output_folder'
-        self._output_location = ParameterLookup.lookup(parameter=output_param)
-        # This is used as a base path, so make sure it ends in a '/'
-        if self._output_location[-1] != '/':
-            self._output_location += '/'
-        self._createDirIfNotFound(self._output_location)
-        # Count how many images have been written for use in the names.
-        self._count = 0
-        # Create a TF listener to transform key points.
-        self._tf_buffer = tf2_ros.Buffer()
-        self._tf_listener = tf2_ros.TransformListener(buffer=self._tf_buffer)
-        timeout_param = '~' + self._name + '/tf_timeout'
-        self._tf_timeout = ParameterLookup.lookupWithDefault(
-            parameter=timeout_param, default=2.0)
-        # Look up the camera frame ID to project points.
-        self._camera_frame_id = ParameterLookup.lookupWithDefault(
-            parameter='~camera_frame_id', default='camera/base_link')
+        super(STVNet, self).__init__(name)
+
+    def finalizeOutput(self, robot_list):
+        """!
+        @brief Does nothing as there is no master list or other global data files
+        for this format.
+        @param robot_list The list of all robot information.
+        """
+        pass
 
     def outputScene(self, robot_list, raw_image, camera_info):
         """!
@@ -68,71 +52,21 @@ class STVNet(object):
             label_file = open(label_path + base_file_name + '.txt', mode='w')
             label_file.write(str(robot.getClassID()) + ' ')
             keypoints = robot.getKeypoints()
+            # Transform each keypoint into the camera's frame of reference.
+            keypoints_transformed = []
             for keypoint in keypoints:
-                (x, y) = self._projectPointIntoImage(point=keypoint,
-                                                     source_frame_id=robot.getFullFrame(), camera_info=camera_info)
-                # For some reason, cv stores this as a ndarray instead of Mat. So use the shape
-                # for dimensions. It is (rows x columns).
-                scaled_x = x / raw_image.shape[1]
-                scaled_y = y / raw_image.shape[0]
+                keypoint_transformed = self._projectPointIntoFrame(
+                    keypoint, robot.getFullFrame(), self._camera_frame_id)
+                keypoints_transformed.append(keypoint_transformed)
+            # Now, project them onto the image.
+            image_points = self._projectPointsIntoImage(
+                points=keypoints_transformed, camera_info=camera_info)
+            # Write each to file in the scaled format.
+            for point in image_points:
+                scaled_x = point[0] / raw_image.shape[1]
+                scaled_y = point[1] / raw_image.shape[0]
                 label_file.write(str(scaled_x) + ' ' + str(scaled_y) + ' ')
             label_file.write('\n')
             label_file.close()
         self._count += 1
         pass
-
-    def _createDirIfNotFound(self, path):
-        """!
-        @brief Create a given directory if it does not already exist.
-
-        This will also create any nestings of directories so that the
-        full path will exist.
-        @param path The path to check for.
-        """
-        if not os.path.exists(path):
-            warn_string = 'Output directory {path} did not originally exist. Creating it'
-            warn_string = warn_string.format(path=path)
-            rospy.logwarn(msg=warn_string)
-            os.makedirs(path)
-
-    def _projectPointIntoImage(self, point, source_frame_id, camera_info):
-        """!
-        @brief Takes a geometry_msgs/Point in the robot's frame and projects it
-        into the image.
-
-        This goes through two steps. It projects into the camera's frame of
-        reference, then it uses the camera parameters to project into the image
-        itself.
-        @param point The geometry_msgs/Point to project.
-        @param source_frame_id The fully resolved frame_id the point is in reference to.
-        @param camera_info The sensor_msgs/CameraInfo contining the camera
-        information.
-        @return The a tuple of the pixel coordinates - (x, y).
-        @throw Any underlying Exceptions raised.
-        """
-        # First, create a stamped message, since that is what the transform needs.
-        point_robot_stamped = PointStamped()
-        point_robot_stamped.header.stamp = rospy.Time.now()
-        point_robot_stamped.header.frame_id = source_frame_id
-        point_robot_stamped.point = point
-        # Do the transform. Give a timeout to let it wait for the latest TF if it would otherwise
-        # need to extrapolate.
-        timeout = rospy.Duration(self._tf_timeout)
-        point_camera_stamped = self._tf_buffer.transform(
-            object_stamped=point_robot_stamped, target_frame=self._camera_frame_id, timeout=timeout)
-        # Use CV's projectPoints, but it needs input as numpy so convert everything.
-        point_camera = numpy.zeros(shape=(1, 3))
-        point_camera[0][0] = point_camera_stamped.point.x
-        point_camera[0][1] = point_camera_stamped.point.y
-        point_camera[0][2] = point_camera_stamped.point.z
-        intrinsic = numpy.array(camera_info.K).reshape(3, 3)
-        # There is no translation or rotation needed
-        zeros = numpy.zeros(shape=(3, 1))
-        # Do the actual conversion. The second argument is the Jacobian, which isn't needed.
-        (point_image, _) = cv2.projectPoints(objectPoints=point_camera,
-                                             rvec=zeros, tvec=zeros, cameraMatrix=intrinsic, distCoeffs=None)
-        # Extract the points. It outputs a 3D matrix, so go ahead and reduce the dimensions,
-        # which are mostly empty.
-        point_image = point_image.flatten()
-        result = (point_image[0], point_image[1])
-        return result
