@@ -10,7 +10,8 @@ global_frame: "map"
 
 # Specify values needed by any data writing format.
 yolo:
-    output_folder: "$(optenv HOME)/Desktop/results/YOLO_Output"
+    output_folder: "$(optenv HOME)/Desktop/results/YOLO_Output/data"
+    main_list: "$(optenv HOME)/Desktop/results/YOLO_Output/output.txt"
 stvnet:
     output_folder: "$(optenv HOME)/Desktop/results/STVNet_Output"
 
@@ -34,6 +35,16 @@ athreos:
         [-0.4, 0.3, 0.25],
         [-0.4, -0.3, 0.25]
         ]
+    bounding_shape: [
+        [0.35, -0.3, 0.0],
+        [0.35, 0.3, 0.0],
+        [-0.4, 0.3, 0.0],
+        [-0.4, -0.3, 0.0],
+        [0.35, -0.3, 0.25],
+        [0.35, 0.3, 0.25],
+        [-0.4, 0.3, 0.25],
+        [-0.4, -0.3, 0.25]
+        ]
 
 ephara:
     class: 15
@@ -42,6 +53,16 @@ ephara:
     # These are the key points to look for in detection, relative to the origin of the
     # frame specified in "frame_id"
     keypoints: [
+        [0.35, -0.3, 0.0],
+        [0.35, 0.3, 0.0],
+        [-0.4, 0.3, 0.0],
+        [-0.4, -0.3, 0.0],
+        [0.35, -0.3, 0.25],
+        [0.35, 0.3, 0.25],
+        [-0.4, 0.3, 0.25],
+        [-0.4, -0.3, 0.25]
+        ]
+    bounding_shape: [
         [0.35, -0.3, 0.0],
         [0.35, 0.3, 0.0],
         [-0.4, 0.3, 0.0],

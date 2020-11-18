@@ -1,10 +1,9 @@
 import cv2
-import os
+from label_writers import LabelWriterBase
 import ParameterLookup
-import rospy
 
 
-class YOLO(object):
+class YOLO(LabelWriterBase):
     """
     This class provides a means of writing the Darknet/YOLO format
     to disk. It consists of bounding boxes and class IDs per image.
@@ -25,19 +24,24 @@ class YOLO(object):
         @param name The name of this particular data writer. Used to
         look up values on the parameter server.
         """
-        self._name = name
-        # Look up where the data should go.
-        output_param = "~" + self._name + "/output_folder"
-        self._output_location = ParameterLookup.lookup(parameter=output_param)
-        # This is used to prepend image names, so make sure it ends in a '/'
-        if self._output_location[-1] != '/':
-            self._output_location += '/'
-        if not os.path.exists(self._output_location):
-            rospy.logwarn(msg='Output directory {path} did not originally exist. Creating it'.format(
-                path=self._output_location))
-            os.makedirs(self._output_location)
-        # Count how many images have been written for use in the names.
-        self._count = 0
+        super(YOLO, self).__init__(name)
+        self._main_list = ParameterLookup.lookup(
+            parameter='~' + self._name + '/main_list')
+
+    def finalizeOutput(self, robot_list):
+        """!
+        @brief Write the list of all images included in this dataset.
+
+        This file name and location is determined by the parameter
+        "main_list"
+        @param robot_list The list of all robot information.
+        """
+        with open(self._main_list, 'w') as file:
+            # The count increments after each scene, so is one higher
+            # than the actual number of images.
+            for i in range(self._count):
+                line = self._output_location + '{:08d}'.format(i) + '.png\n'
+                file.write(line)
 
     def outputScene(self, robot_list, raw_image, camera_info):
         """!
@@ -47,8 +51,43 @@ class YOLO(object):
         @param camera_info A sensor_msgs/CameraInfo with the latest
         information on the camera used to capture @ref raw_image.
         """
+        id_string = '{:08d}'.format(self._count)
         # Write the raw image first.
-        raw_image_file = self._output_location + \
-            '{:08d}'.format(self._count) + '.png'
+        raw_image_file = self._output_location + id_string + '.png'
         cv2.imwrite(filename=raw_image_file, img=raw_image)
+        # Add the label file
+        label_file = self._output_location + id_string + '.txt'
+        with open(label_file, 'w') as file:
+            # Create a bounding box for each robot.
+            for robot in robot_list:
+                # Transform every bounding point into the image to find the
+                # image bounding box.
+                vertices = robot.getBoundingShape()
+                vertices_transformed = []
+                for vertex in vertices:
+                    vertex_transformed = self._projectPointIntoFrame(
+                        vertex, robot.getFullFrame(), self._camera_frame_id)
+                    vertices_transformed.append(vertex_transformed)
+                # Project them onto the image
+                image_points = self._projectPointsIntoImage(
+                    vertices_transformed, camera_info)
+                # Find the min and max of x and y for the bounding box
+                min_x = float('inf')
+                min_y = float('inf')
+                max_x = float('-inf')
+                max_y = float('-inf')
+                for point in image_points:
+                    min_x = min(min_x, point[0])
+                    min_y = min(min_y, point[1])
+                    max_x = max(max_x, point[0])
+                    max_y = max(max_y, point[1])
+                # Determine the center and width of this rectangle, scaled by the image
+                center_x = ((max_x + min_x) / 2.0) / raw_image.shape[1]
+                center_y = ((max_y + min_y) / 2.0) / raw_image.shape[0]
+                width = float(max_x - min_x) / raw_image.shape[1]
+                height = float(max_y - min_y) / raw_image.shape[0]
+                # Write everything to file
+                output_line = '{cid} {cx} {cy} {w} {h}\n'.format(
+                    cid=robot.getClassID(), cx=center_x, cy=center_y, w=width, h=height)
+                file.write(output_line)
         self._count += 1

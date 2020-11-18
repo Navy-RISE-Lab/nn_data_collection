@@ -31,6 +31,10 @@ class Robot(object):
         # Also look up the keypoints used for this robot
         self._keypoints = self._initializeKeypoints(
             '~' + self._resolveString("keypoints"))
+        # Look up the bounding rectangular prism, which is treated mathematically
+        # the same as keypoints.
+        self._bounding_shape = self._initializeKeypoints(
+            '~' + self._resolveString('bounding_shape'))
         # Determine what name to use to find the robot in the TF tree.
         self._frame_id = ParameterLookup.lookupWithDefault(
             '~' + self._resolveString("frame_id"), "base_link")
@@ -76,6 +80,13 @@ class Robot(object):
         """
         result = self.getName() + '/' + value
         return result
+
+    def getBoundingShape(self):
+        """!
+        @brief Return the vertices of a bounding shape in the robot's frame.
+        @return A list of geometry_msgs/Point vertices.
+        """
+        return self._bounding_shape
 
     def getClassID(self):
         """!
