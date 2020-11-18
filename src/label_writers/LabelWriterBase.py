@@ -112,7 +112,7 @@ class LabelWriterBase(object):
         # Pull out each point into its own tuple.
         result = []
         for i in range(number_of_points):
-            point_tuple = (points_image[0][0], points_image[0][1])
+            point_tuple = (points_image[i][0], points_image[i][1])
             result.append(point_tuple)
         return result
 
