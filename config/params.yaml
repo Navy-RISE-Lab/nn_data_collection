@@ -14,6 +14,9 @@ yolo:
     main_list: "$(optenv HOME)/Desktop/results/YOLO_Output/output.txt"
 stvnet:
     output_folder: "$(optenv HOME)/Desktop/results/STVNet_Output"
+bounding_box:
+    output_folder: "$(optenv HOME)/Desktop/results/BoundingBox"
+    output_frame: "infrastructure/camera/optical_link"
 
 # The list of robots to control.
 /robot_list: ["athreos", "ephara"]

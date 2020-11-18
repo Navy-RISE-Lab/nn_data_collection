@@ -222,6 +222,7 @@ if __name__ == "__main__":
     rospy.init_node(name='collect_data')
     # Set up the different data writers.
     data_writers = [
+        label_writers.BoundingBox('bounding_box'),
         label_writers.YOLO('yolo'),
         label_writers.STVNet('stvnet')
     ]
