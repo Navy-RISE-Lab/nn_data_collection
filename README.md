@@ -18,7 +18,20 @@ as "map" or "world".
 The system needs access to a Gazebo simulation that has the same robots used
 to generate the data. It should also have a camera. This environment doesn't
 have to match the one used to record, but it should generally allow the
-recreation of movement without any collisions.
+recreation of movement without any collisions. The following topics and
+services should be available or remapped:
+
+#### Subscriptions ####
+This will resolve into the node's namespace by default.
+- **camera/image_raw** *(sensor_msgs/Image)* - The image from the simulated
+camera in Gazebo.
+
+#### Service Clients ####
+These will look at the global level by default.
+- **/gazebo/set_model_state** *(gazebo_msgs/SetModelState)* - Used to directly
+move the robots in Gazebo.
+- **/gazebo/get_model_state** *(gazebo_msgs/GetModelState)* - Used to initially
+lookup each robot's pose in Gazebo.
 
 ### Configuration ###
 See the [configuration file](config/params.yaml) for examples of the parameters
