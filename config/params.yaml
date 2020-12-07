@@ -9,6 +9,15 @@ camera_frame_id: "infrastructure/camera/optical_link"
 # The global static frame used to reference all models in Gazebo. Almost always 'map'.
 global_frame: "map"
 
+# These parameters allow for tuning of the background subtractor.
+background_subtractor:
+    # How many images should be collected to train the subtractor. Helps with noise.
+    history_length: 1
+    # The threshold on the squared Mahalanobis distance between the pixel and the model.
+    var_threshold: 500
+    # If tru, detect shadows and mark them with a lighter color.
+    detect_shadows: false
+
 # Specify values needed by any data writing format.
 yolo:
     output_folder: "$(optenv HOME)/Desktop/results/YOLO_Output/data"

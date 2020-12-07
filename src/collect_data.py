@@ -56,10 +56,15 @@ def initializeBackgroundSubtractor(robot_list, gazebo_set_pose_client):
     @return The background subtractor used in the script.
     """
     # Set a large history to maximize the detection of differences from background.
-    background_history = 100
-    # ! @todo Explore how shadow detection impacts the results.
+    background_history = ParameterLookup.lookupWithDefault(
+        parameter='~background_subtractor/history_length', default=100)
+    # Explore how shadow detection impacts the results.
+    var_threshold = ParameterLookup.lookupWithDefault(
+        parameter='~background_subtractor/var_threshold', default=500)
+    detect_shadows = ParameterLookup.lookupWithDefault(
+        parameter='~background_subtractor/detect_shadows', default=False)
     background_subtractor = cv2.createBackgroundSubtractorMOG2(
-        history=background_history, varThreshold=500, detectShadows=False)
+        history=background_history, varThreshold=var_threshold, detectShadows=detect_shadows)
     # Create a client to determine where each robot is located within the Gazebo environment
     gazebo_get_pose_name = '/gazebo/get_model_state'
     rospy.loginfo('Waiting to find robot poses...')
@@ -264,6 +269,11 @@ if __name__ == "__main__":
     # window past the bag file then. So use that as the break.
     rospy.loginfo('Beginning data collection...')
     while current_time < end_time:
+        # Update the user on progress.
+        percent_complete = (current_time - start_time).to_sec() / \
+            (end_time - start_time).to_sec() * 100.0
+        rospy.loginfo_throttle(
+            period=5.0, msg='%.1f%% completed' % percent_complete)
         # Start by moving every robot out of the way. They don't need to be in new
         # spots. They will also be collision free, since they either have a pose from
         # the bag file or the initial poses specified at launch.
@@ -310,20 +320,6 @@ if __name__ == "__main__":
         # Have each output format write their information.
         for writer in data_writers:
             writer.outputScene(robot_list, image, camera_info)
-        # Look up the robot's 3D pose
-        # Determine the robot's distance from the camera
-        # Project the key points into the camera
-        # Write the background image
-        # Layer the masks according to the distances
-        # For the new format, split out the pixels by robot again, since this
-        # now accounts for occlusions
-        # Create bounding shapes for each robot for YOLO
-        # Write everything to file
-        # Update the user on progress.
-        percent_complete = (current_time - start_time).to_sec() / \
-            (end_time - start_time).to_sec() * 100.0
-        rospy.loginfo_throttle(
-            period=5.0, msg='%.1f%% completed' % percent_complete)
         # Update the times
         current_time += period
     # When this is finally done, record any meta information needed by networks.

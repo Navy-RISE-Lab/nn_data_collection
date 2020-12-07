@@ -54,6 +54,19 @@ control in the data generation. These should exist in Gazebo and the bag file.
 Regardless of the namespace, this should exist at the top level of the
 parameter server due to lab convention.
 
+There are three parameters available for tuning the background subtractor used
+for creating the instance pixel masks. They each are within the
+```background_subtractor``` namespace under the node. See OpenCV's documentation
+[here](https://docs.opencv.org/master/de/de1/group__video__motion.html#ga2beb2dee7a073809ccec60f145b6b29c)
+for more information.
+- **history_length** *(default, int)* - How many images to store in the filter.
+Note that updates do not occur after initialization. This primarily helps with
+noise.
+- **var_threshold** *(default, double)* - Threshold on the squared Mahalanobis
+distance between the pixel and the model to assign it to the model or not.
+- **detect_shadows** *(default,  bool)* - Determines if the algorithm should detect
+shadows. If so, marks them with a lighter color.
+
 There are also a number of parameters that should be specified for each robot:
 
 - **class** *(required, string or numeric)* - A unique ID to represent the
