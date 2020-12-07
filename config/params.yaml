@@ -1,4 +1,5 @@
 # The location of the bag file to replay. This can accept environment args (ex. $(optenv HOME))
+# This should be changed, since it points to your data.
 bag_file: "$(find nn_data_collection)/test/example_replay.bag"
 # The rate at which to step through the bag file, in seconds.
 simulated_rate: 0.5

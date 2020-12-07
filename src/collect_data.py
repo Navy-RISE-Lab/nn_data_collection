@@ -108,6 +108,9 @@ def initializeReplay(global_frame_id, robot_list):
     rospy.loginfo('Loading bag file...')
     # Determine where the bag file is located via parameter server.
     bag_file = ParameterLookup.lookup(parameter='~bag_file')
+    if 'example_replay.bag' in bag_file:
+        rospy.logwarn(
+            msg='You might be using the example bag file. Did you mean to provide your own using the bag_file parameter?')
     # Open the bag file. This might throw an error, so catch it and send a warning
     # to the user.
     try:
