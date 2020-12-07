@@ -121,10 +121,15 @@ class Robot(object):
 
     def createSetModelStateRequest(self, new_transform=None):
         """!
-        Create a gazebo_msgs/ModelState message based on the recorded pose.
-        @param robot_transform The geometry_msgs/Transform that represents the transform
-        from the global frame to the robot's frame. Used when creating the message.
-        @return A gazebo_msgs/ModelState containing the robot's transform.
+        Create a gazebo_msgs/ModelState message from a transform.
+
+        If a @ref new_transform is provided, this is used to generate
+        the request. Otherwise, the robot's recorded pose is used.
+        @param new_transform If provided, the returned will use this transform
+        to create the request. This should be the transform from the global frame
+        to the robot's frame.
+        @return A gazebo_msgs/ModelState containing the robot's transform suitable
+        for passing to Gazebo's SetModelState service.
         """
         msg = ModelState()
         msg.model_name = self.getName()
