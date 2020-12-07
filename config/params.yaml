@@ -1,5 +1,5 @@
 # The location of the bag file to replay. This can accept environment args (ex. $(optenv HOME))
-bag_file: "$(optenv HOME)/Desktop/bag-test.bag"
+bag_file: "$(find nn_data_collection)/test/example_replay.bag"
 # The rate at which to step through the bag file, in seconds.
 simulated_rate: 0.5
 # The frame_id of the camera as represented in the TF tree. This should follow usual camera
@@ -19,39 +19,12 @@ bounding_box:
     output_frame: "infrastructure/camera/optical_link"
 
 # The list of robots to control.
-/robot_list: ["athreos", "ephara"]
+/robot_list: ["athreos"]
 
 # Specify the needed values for each robot.
 athreos:
-    class: 15
-    id: 7
-    frame_id: "base_footprint"
-    # These are the key points to look for in detection, relative to the origin of the
-    # frame specified in "frame_id"
-    keypoints: [
-        [0.35, -0.3, 0.0],
-        [0.35, 0.3, 0.0],
-        [-0.4, 0.3, 0.0],
-        [-0.4, -0.3, 0.0],
-        [0.35, -0.3, 0.25],
-        [0.35, 0.3, 0.25],
-        [-0.4, 0.3, 0.25],
-        [-0.4, -0.3, 0.25]
-        ]
-    bounding_shape: [
-        [0.35, -0.3, 0.0],
-        [0.35, 0.3, 0.0],
-        [-0.4, 0.3, 0.0],
-        [-0.4, -0.3, 0.0],
-        [0.35, -0.3, 0.25],
-        [0.35, 0.3, 0.25],
-        [-0.4, 0.3, 0.25],
-        [-0.4, -0.3, 0.25]
-        ]
-
-ephara:
-    class: 15
-    id: 2
+    class: 0
+    id: 0
     frame_id: "base_footprint"
     # These are the key points to look for in detection, relative to the origin of the
     # frame specified in "frame_id"

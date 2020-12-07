@@ -1,0 +1,15 @@
+# Python #
+__pycache__/
+*.py[cod]
+*$py.class
+
+# ROS #
+!*.bag
+CATKIN_IGNORE
+
+## Visual Studio Code ##
+.vscode/*
+*.code-workspace
+# Local History for Visual Studio Code
+.history/
+
