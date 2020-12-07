@@ -65,7 +65,14 @@ def initializeBackgroundSubtractor(robot_list, gazebo_set_pose_client):
         parameter='~background_subtractor/detect_shadows', default=False)
     background_subtractor = cv2.createBackgroundSubtractorMOG2(
         history=background_history, varThreshold=var_threshold, detectShadows=detect_shadows)
-    # Create a client to determine where each robot is located within the Gazebo environment
+    # Create a client to determine where each robot is located within the Gazebo environment.
+    # This is only done at initialization to move every robot out of the way. It is assumed the
+    # robots start in a stable location. So the system is safe to just move them up in the air,
+    # but leave their X/Y the same. Given Gazebo's propensity to send colliding objects flying,
+    # this seems like the best course of action. The user is unlikely to start the node if
+    # the simulation freaks out right away. Using the bag file first location is possible, but
+    # would require passing the tf_buffer into this function. After initialization, the bag file
+    # positions are used for the rest of the node.
     gazebo_get_pose_name = '/gazebo/get_model_state'
     rospy.loginfo('Waiting to find robot poses...')
     rospy.wait_for_service(gazebo_get_pose_name)
