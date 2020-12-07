@@ -31,7 +31,7 @@ class Robot(object):
         # Also look up the keypoints used for this robot
         self._keypoints = self._initializeKeypoints(
             '~' + self._resolveString("keypoints"))
-        # Look up the bounding rectangular prism, which is treated mathematically
+        # Look up the bounding shape, which is treated mathematically
         # the same as keypoints.
         self._bounding_shape = self._initializeKeypoints(
             '~' + self._resolveString('bounding_shape'))

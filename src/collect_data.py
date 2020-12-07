@@ -225,7 +225,7 @@ if __name__ == "__main__":
     rospy.init_node(name='collect_data')
     # Set up the different data writers.
     data_writers = [
-        label_writers.BoundingBox('bounding_box'),
+        label_writers.BoundingShape('bounding_shape'),
         label_writers.YOLO('yolo'),
         label_writers.STVNet('stvnet')
     ]
@@ -317,7 +317,7 @@ if __name__ == "__main__":
         # Layer the masks according to the distances
         # For the new format, split out the pixels by robot again, since this
         # now accounts for occlusions
-        # Create bounding boxes for each robot for YOLO
+        # Create bounding shapes for each robot for YOLO
         # Write everything to file
         # Update the user on progress.
         percent_complete = (current_time - start_time).to_sec() / \

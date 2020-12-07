@@ -3,7 +3,7 @@ from label_writers import LabelWriterBase
 import ParameterLookup
 
 
-class BoundingBox(LabelWriterBase):
+class BoundingShape(LabelWriterBase):
     """!
     @brief For each frame, record the vertices of the bounding shape in an
     arbitrary frame.
@@ -16,7 +16,7 @@ class BoundingBox(LabelWriterBase):
     """
 
     def __init__(self, name):
-        super(BoundingBox, self).__init__(name)
+        super(BoundingShape, self).__init__(name)
         self._output_frame = ParameterLookup.lookup(
             parameter='~' + self._name + '/output_frame')
 

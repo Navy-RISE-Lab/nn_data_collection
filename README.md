@@ -82,8 +82,8 @@ Adding new writers is described below. Currently, there are three output
 formats. Each has its own parameters that should be customized. All appear
 within the writer's namespace (i.e. */node_ns/writer_name/param*)
 
-#### Bounding Box ####
-This is a simple format that writes the bounding box points after they have
+#### Bounding Shape ####
+This is a simple format that writes the bounding shape points after they have
 been projected into a given frame of reference. Each scene is a seperate image
 with an associated text file. Each line of the text file provides a single
 robots' unique ID and all vertices in x1, y1, z1, x2, y2, z2, ... format.
@@ -178,7 +178,7 @@ stored in each Robot class in robot_list.
 right near the beginning of the function. They are defined like so:
 ```python
 data_writers = [
-	label_writers.BoundingBox('bounding_box'),
+	label_writers.BoundingShape('bounding_shape'),
     label_writers.YOLO('yolo'),
     label_writers.STVNet('stvnet')
 ]
