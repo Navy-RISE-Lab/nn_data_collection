@@ -24,8 +24,10 @@ bounding_shape:
 
 # Specify the needed values for each robot.
 athreos:
-    class: 0
-    id: 0
+    # A unique identifier for the entire class. Can be a string or numeric.
+    class: "summit"
+    # A globally unique identifier for the specific robot. Can be string or numeric.
+    id: "athreos"
     frame_id: "base_footprint"
     # These are the key points to look for in detection, relative to the origin of the
     # frame specified in "frame_id". They can be anywhere.

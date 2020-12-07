@@ -56,10 +56,10 @@ parameter server due to lab convention.
 
 There are also a number of parameters that should be specified for each robot:
 
-- **class** *(required, int)* - A unique ID to represent the class/type of the
-robot.
-- **id** *(required, int)* - A unique ID for this particular robot that is
-different from all other robots.
+- **class** *(required, string or numeric)* - A unique ID to represent the
+class/type of the robot.
+- **id** *(required, string or numeric)* - A unique ID for this particular robot
+that is different from all other robots.
 - **frame_id** *(optional, string)* - The base name of the frame in the TF tree
 to use for looking up the robot's position. This is usually "base_footprint" or
 "base_link" and will be resolved into the robot's namespace.
@@ -70,7 +70,8 @@ relative to ```frame_id```.
 - **bounding_shape** *(required, list)* - A list of points representing the
 vertices of the bounding shape (usually a rectangular box) around the robot.
 This is a list of 3 element lists representing the x, y, and z components of
-each point. They are relative to ```frame_id```.
+each point. They are relative to ```frame_id```. Beyond the requirement to
+circumscribe the robot, there are no constraints on this shape.
 
 Lastly, each output format has it's own parameters. See below for information
 on those.
