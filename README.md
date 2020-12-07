@@ -14,6 +14,10 @@ using real-world robots. During motion planning, record the two topics to a bag
 file. The robot frames should all trace back to a common reference frame such
 as "map" or "world".
 
+An example bag file is in the test subfolder. It contains a single
+robot driving forward for 10 seconds. The parameters specified in the
+yaml file are all set to work with this example.
+
 ### Simulation Environment ###
 The system needs access to a Gazebo simulation that has the same robots used
 to generate the data. It should also have a camera. This environment doesn't
@@ -87,8 +91,18 @@ each point. They are relative to ```frame_id```. Beyond the requirement to
 circumscribe the robot, there are no constraints on this shape.
 
 Lastly, each output format has it's own parameters. See below for information
-on those.
-
+on those. You can customize which formats are written, but this requires editing
+the code. Edit the lines that appear like this:
+```python
+data_writers = [
+	label_writers.BoundingShape('bounding_shape'),
+	label_writers.YOLO('yolo'),
+	label_writers.STVNet('stvnet')
+]
+```
+You can add and remove as many writers as you want. You can even
+duplicate writers as long as the names and output folders are unique. A future
+version will add better customization.
 ### Output Writers ###
 This node provides a flexible framework to write data in multiple formats. This
 avoids the need to run the node multiple times or write conversion scripts.
