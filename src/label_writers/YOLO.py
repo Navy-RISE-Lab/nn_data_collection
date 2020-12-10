@@ -87,7 +87,7 @@ class YOLO(LabelWriterBase):
                 width = float(max_x - min_x) / raw_image.shape[1]
                 height = float(max_y - min_y) / raw_image.shape[0]
                 # Write everything to file
-                output_line = '{cid} {cx} {cy} {w} {h}\n'.format(
-                    cid=robot.getClassID(), cx=center_x, cy=center_y, w=width, h=height)
+                output_line = '{cid:s} {cx:0.5f} {cy:0.5f} {w:0.5f} {h:0.5f}\n'.format(
+                    cid=str(robot.getClassID()), cx=center_x, cy=center_y, w=width, h=height)
                 file.write(output_line)
         self._count += 1

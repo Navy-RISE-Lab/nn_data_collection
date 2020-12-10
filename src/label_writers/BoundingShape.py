@@ -51,6 +51,6 @@ class BoundingShape(LabelWriterBase):
                 for vertex in vertices:
                     vertex_transformed = self._projectPointIntoFrame(
                         vertex, robot.getFullFrame(), self._output_frame)
-                    file.write(str(vertex_transformed.x) + ' ' +
-                               str(vertex_transformed.y) + ' ' + str(vertex_transformed.z) + ' ')
+                    file.write('{0:0.5f} {1:0.5f} {2:0.5f}'.format(
+                        vertex_transformed.x, vertex_transformed.y, vertex_transformed.z))
                 file.write('\n')

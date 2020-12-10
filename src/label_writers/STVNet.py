@@ -65,7 +65,7 @@ class STVNet(LabelWriterBase):
             for point in image_points:
                 scaled_x = point[0] / raw_image.shape[1]
                 scaled_y = point[1] / raw_image.shape[0]
-                label_file.write(str(scaled_x) + ' ' + str(scaled_y) + ' ')
+                label_file.write('{0:.5f} {1:.5f} '.format(scaled_x, scaled_y))
             label_file.write('\n')
             label_file.close()
         self._count += 1
