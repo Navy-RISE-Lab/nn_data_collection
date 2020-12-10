@@ -50,7 +50,7 @@ class STVNet(LabelWriterBase):
             label_path = self._output_location + robot.getName() + '/labels/'
             self._createDirIfNotFound(label_path)
             label_file = open(label_path + base_file_name + '.txt', mode='w')
-            label_file.write(str(robot.getClassID()) + ' ')
+            label_file.write(str(robot.getID()) + ' ')
             keypoints = robot.getKeypoints()
             # Transform each keypoint into the camera's frame of reference.
             keypoints_transformed = []
