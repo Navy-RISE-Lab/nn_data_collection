@@ -88,7 +88,10 @@ class LabelWriterBase(object):
         """!
         @brief Take points in the camera's frame of reference and project it onto the
         image.
-        @param points A list of geometry_msgs/Point to project.
+        @param points A list of geometry_msgs/Point to project. The points should be in the
+        camera's frame of reference, typically its optical frame if following convention. This
+        is a frame with the positive Z axis extending out perpendicular to the image towards the
+        subject.
         @param camera_info The sensor_msgs/CameraInfo message containing the camera
         information.
         @return A list of tuples of the pixel coordinates - (x, y).
