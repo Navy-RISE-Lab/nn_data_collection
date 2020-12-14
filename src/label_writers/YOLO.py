@@ -91,3 +91,6 @@ class YOLO(LabelWriterBase):
                     cid=str(robot.getClassID()), cx=center_x, cy=center_y, w=width, h=height)
                 file.write(output_line)
         self._count += 1
+
+    def requireInstanceMask(self):
+        return False

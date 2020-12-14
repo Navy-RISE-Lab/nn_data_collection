@@ -70,3 +70,6 @@ class STVNet(LabelWriterBase):
             label_file.close()
         self._count += 1
         pass
+
+    def requireInstanceMask(self):
+        return True

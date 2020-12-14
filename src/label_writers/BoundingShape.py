@@ -54,3 +54,6 @@ class BoundingShape(LabelWriterBase):
                     file.write('{0:0.5f} {1:0.5f} {2:0.5f}'.format(
                         vertex_transformed.x, vertex_transformed.y, vertex_transformed.z))
                 file.write('\n')
+
+    def requireInstanceMask(self):
+        return False

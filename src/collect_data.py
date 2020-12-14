@@ -241,6 +241,10 @@ if __name__ == "__main__":
         label_writers.YOLO('yolo'),
         label_writers.STVNet('stvnet')
     ]
+    # Flag if an instance mask is needed for each robot.
+    mask_required = False
+    for writer in data_writers:
+        mask_required = mask_required or writer.requireInstanceMask()
     # Setup camera
     camera_frame_id = ParameterLookup.lookupWithDefault(
         parameter='~camera_frame_id', default='camera/optical_link')
@@ -267,9 +271,10 @@ if __name__ == "__main__":
     # simulations unless there is a subscriber. So this tricks Gazebo into doing so.
     name = rospy.Subscriber(name='camera/image_raw',
                             data_class=Image, callback=None, queue_size=1)
-    # Set up the subtractor and initialize
-    background_subtractor = initializeBackgroundSubtractor(
-        robot_list, gazebo_client)
+    # Set up the subtractor and initialize. Only required for instance
+    if mask_required:
+        background_subtractor = initializeBackgroundSubtractor(
+            robot_list, gazebo_client)
     # Loop through the whole bag file until the end is reached. The two times above
     # provide a moving window. The last iteration we want is when the window crosses
     # the bag end time. The next iteration would have both start and end of the
@@ -281,40 +286,42 @@ if __name__ == "__main__":
             (end_time - start_time).to_sec() * 100.0
         rospy.loginfo_throttle(
             period=5.0, msg='%.1f%% completed' % percent_complete)
-        # Start by moving every robot out of the way. They don't need to be in new
-        # spots. They will also be collision free, since they either have a pose from
-        # the bag file or the initial poses specified at launch.
+        # Look up each robot's pose from the bag file TF tree.
         for robot in robot_list:
-            robot_new_pose_request = robot.createSetModelStateRequest()
-            robot_new_pose_request.pose.position.z = 1e6
-            result = moveRobot(gazebo_client, robot_new_pose_request)
-            if not result:
-                rospy.logfatal('Unable to move robot, killing processing.')
-                exit()
-        # Now, go through each robot and move it into the scene.
-        for robot in robot_list:
-            # Look up each robot's pose from the bag file TF tree.
             try:
                 robot_transform = tf_buffer.lookup_transform_core(
                     global_frame_id, robot.getFullFrame(), current_time)
             except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException), argument:
                 rospy.logwarn('%s' % argument)
-                # @TODO Figure out what to do when a single robot can't be found on the TF tree yet.
             robot.recordTransform(robot_transform.transform)
-            # Move the robot and allow time for Gazebo to update
-            moveRobot(gazebo_client, robot.createSetModelStateRequest())
-            (image, _) = captureImage()
-            # Use the background subtractor to find the robot. Be sure to set the
-            # learning rate to 0 to prevent updating the background image.
-            foreground_mask = background_subtractor.apply(
-                image, learningRate=0.0)
-            robot.recordPixelMask(foreground_mask)
-            robot_new_pose_request = robot.createSetModelStateRequest()
-            robot_new_pose_request.pose.position.z = 1e6
-            result = moveRobot(gazebo_client, robot_new_pose_request)
-            if not result:
-                rospy.logfatal('Unable to move robot, killing processing.')
-                exit()
+        # Start by moving every robot out of the way. They don't need to be in new
+        # spots. They will also be collision free, since they either have a pose from
+        # the bag file or the initial poses specified at launch.
+        # This only needs done for instance segmentation, which is not always required.
+        if mask_required:
+            for robot in robot_list:
+                robot_new_pose_request = robot.createSetModelStateRequest()
+                robot_new_pose_request.pose.position.z = 1e6
+                result = moveRobot(gazebo_client, robot_new_pose_request)
+                if not result:
+                    rospy.logfatal('Unable to move robot, killing processing.')
+                    exit()
+            # Now, go through each robot and move it into the scene.
+            for robot in robot_list:
+                # Move the robot and allow time for Gazebo to update
+                moveRobot(gazebo_client, robot.createSetModelStateRequest())
+                (image, _) = captureImage()
+                # Use the background subtractor to find the robot. Be sure to set the
+                # learning rate to 0 to prevent updating the background image.
+                foreground_mask = background_subtractor.apply(
+                    image, learningRate=0.0)
+                robot.recordPixelMask(foreground_mask)
+                robot_new_pose_request = robot.createSetModelStateRequest()
+                robot_new_pose_request.pose.position.z = 1e6
+                result = moveRobot(gazebo_client, robot_new_pose_request)
+                if not result:
+                    rospy.logfatal('Unable to move robot, killing processing.')
+                    exit()
         # Move every robot back to the ground
         for robot in robot_list:
             robot_new_pose_request = robot.createSetModelStateRequest()

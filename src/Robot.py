@@ -154,7 +154,8 @@ class Robot(object):
         """!
         Get the latest pixel mask for this robot.
         @return The pixel mask where 1 represents the robot in the image and
-        0 represents everything else.
+        0 represents everything else. If no writers need this info, this will
+        always return a None.
         """
         return self._mask
 

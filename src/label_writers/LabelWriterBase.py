@@ -138,3 +138,19 @@ class LabelWriterBase(object):
         information on the camera used to capture @ref raw_image.
         """
         pass
+
+    @abstractmethod
+    def requireInstanceMask(self):
+        """!
+        @brief Tells interested parties if this writer will need an instance pixel
+        mask to write the format.
+
+        Image processing is computationally expensive. To cut down on this, the node
+        only generates an instance mask if a format requires one. If all requested
+        formats don't it skips that step and robot.getPixelMask returns None.
+        @return True if this format requires a pixel instance mask for labeling
+        correctly and False otherwise.
+
+        @note This should probably be a property, but this is the only way I know
+        how to force its inclusion in the subclasses.
+        """
