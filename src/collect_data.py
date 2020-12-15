@@ -13,12 +13,14 @@ from gazebo_msgs.srv import GetModelState
 from gazebo_msgs.srv import SetModelState
 from geometry_msgs.msg import Transform
 import label_writers
+import numpy
 import ParameterLookup
 from Robot import Robot
 import rosbag
 import rospy
 from sensor_msgs.msg import CameraInfo
 from sensor_msgs.msg import Image
+from tf2_geometry_msgs import PointStamped
 import tf2_py
 import tf2_ros
 
@@ -233,6 +235,69 @@ def moveRobot(client, pose_request):
     return result.success
 
 
+def removeOutsideRobot(mask, robot, tf_buffer, camera_frame_id, camera_info):
+    """!
+    @brief Removes everything in the provided mask that is not within the bounds
+    of the robot.
+
+    Each mask is only on a single robot. If you project the vertices of the bounding
+    shape onto the image, there cannot possibly be any part of the mask outside of the
+    containing rectangle on the image. This provides a simple, but powerful filter for
+    the image.
+    @param mask The mask to filter.
+    @param robot The robot currently being segmented in the image.
+    @param tf_buffer A TF buffer to use to lookup point transforms. This is required
+    to project the robot's bounding shape points into the camera.
+    @param camera_frame_id The name of the frame in TF used by the camera.
+    @param camera_info The camera_info ROS message with camera calibration values.
+    @return An image with everything outside of the robot's area removed.
+    """
+    # First, get the bounding shape of the robot, which is a list of point mesages.
+    bounding_shape = robot.getBoundingShape()
+    # Project each point onto the image.
+    points_image = numpy.zeros(shape=(len(bounding_shape), 2))
+    count = 0
+    for point in bounding_shape:
+        # TF needs a stamp to transform appropriately.
+        point_source_stamped = PointStamped()
+        point_source_stamped.header.stamp = rospy.Time.now()
+        point_source_stamped.header.frame_id = robot.getFullFrame()
+        point_source_stamped.point = point
+        # Transform into the camera
+        try:
+            point_target_stamped = tf_buffer.transform(
+                object_stamped=point_source_stamped, target_frame=camera_frame_id, timeout=rospy.Duration(2.0))
+        except (tf2_ros.LookupException, tf2_ros.ConnectivityException, tf2_ros.ExtrapolationException) as error:
+            rospy.logerr(msg='TF transform error: {error}'.format(error=error))
+            raise
+        # Project onto the image.
+        point_target_numpy = numpy.zeros(shape=(1, 3))
+        point_target_numpy[0][0] = point_target_stamped.point.x
+        point_target_numpy[0][1] = point_target_stamped.point.y
+        point_target_numpy[0][2] = point_target_stamped.point.z
+        intrinsic = numpy.array(object=camera_info.K).reshape(3, 3)
+        zeros = numpy.zeros(shape=(3, 1))
+        (point_image, _) = cv2.projectPoints(objectPoints=point_target_numpy,
+                                             rvec=zeros, tvec=zeros, cameraMatrix=intrinsic, distCoeffs=None)
+        point_image = numpy.squeeze(point_image)
+        # Extract the point and save for comparison with the rest.
+        points_image[count, :] = point_image
+        count += 1
+    # Determine the outer bounds on the images to get the bounding rectangle.
+    # These are used as pixel indices, so need to be ints.
+    mins = points_image.min(axis=0)
+    mins = numpy.floor(mins)
+    mins = mins.astype(dtype=numpy.int16)
+    maxs = points_image.max(axis=0)
+    maxs = numpy.ceil(maxs)
+    maxs = maxs.astype(dtype=numpy.int16)
+    # Use that rectangle to create an image mask
+    new_image = numpy.zeros_like(mask)
+    new_image[mins[1]:maxs[1], mins[0]:maxs[0]
+              ] = mask[mins[1]:maxs[1], mins[0]:maxs[0]]
+    return new_image
+
+
 if __name__ == "__main__":
     rospy.init_node(name='collect_data')
     # Set up the different data writers.
@@ -310,11 +375,15 @@ if __name__ == "__main__":
             for robot in robot_list:
                 # Move the robot and allow time for Gazebo to update
                 moveRobot(gazebo_client, robot.createSetModelStateRequest())
-                (image, _) = captureImage()
+                (image, camera_info) = captureImage()
                 # Use the background subtractor to find the robot. Be sure to set the
                 # learning rate to 0 to prevent updating the background image.
                 foreground_mask = background_subtractor.apply(
                     image, learningRate=0.0)
+                # Remove anything not within the bounding box of the robot, since those
+                # can't possibly be included.
+                foreground_mask = removeOutsideRobot(
+                    foreground_mask, robot, gazebo_tf_buffer, camera_frame_id, camera_info)
                 robot.recordPixelMask(foreground_mask)
                 robot_new_pose_request = robot.createSetModelStateRequest()
                 robot_new_pose_request.pose.position.z = 1e6
