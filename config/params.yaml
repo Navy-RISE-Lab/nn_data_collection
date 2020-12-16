@@ -1,0 +1,65 @@
+# The location of the bag file to replay. This can accept environment args (ex. $(optenv HOME))
+# This should be changed, since it points to your data.
+bag_file: "$(find nn_data_collection)/test/example_replay.bag"
+# The rate at which to step through the bag file, in seconds.
+simulated_rate: 0.5
+# The frame_id of the camera as represented in the TF tree. This should follow usual camera
+# frame conventions of +Z extending forward perpendicular to the lens
+camera_frame_id: "infrastructure/camera/optical_link"
+# The global static frame used to reference all models in Gazebo. Almost always 'map'.
+global_frame: "map"
+
+# These parameters allow for tuning of the background subtractor.
+background_subtractor:
+    # How many images should be collected to train the subtractor. Helps with noise.
+    history_length: 1
+    # The threshold on the squared Mahalanobis distance between the pixel and the model.
+    var_threshold: 500
+    # If tru, detect shadows and mark them with a lighter color.
+    detect_shadows: false
+
+# Specify values needed by any data writing format.
+yolo:
+    output_folder: "$(optenv HOME)/Desktop/results/YOLO_Output/data"
+    main_list: "$(optenv HOME)/Desktop/results/YOLO_Output/output.txt"
+stvnet:
+    output_folder: "$(optenv HOME)/Desktop/results/STVNet_Output"
+bounding_shape:
+    output_folder: "$(optenv HOME)/Desktop/results/BoundingShape"
+    output_frame: "infrastructure/camera/optical_link"
+
+# The list of robots to control.
+/robot_list: ["athreos"]
+
+# Specify the needed values for each robot.
+athreos:
+    # A unique identifier for the entire class. Can be a string or numeric.
+    class: "summit"
+    # A globally unique identifier for the specific robot. Can be string or numeric.
+    id: "athreos"
+    frame_id: "base_footprint"
+    # These are the key points to look for in detection, relative to the origin of the
+    # frame specified in "frame_id". They can be anywhere.
+    keypoints: [
+        [0.35, -0.3, 0.0],
+        [0.35, 0.3, 0.0],
+        [-0.4, 0.3, 0.0],
+        [-0.4, -0.3, 0.0],
+        [0.35, -0.3, 0.25],
+        [0.35, 0.3, 0.25],
+        [-0.4, 0.3, 0.25],
+        [-0.4, -0.3, 0.25]
+        ]
+    # These are the points that circumscribe the robot in 3D space, relative to the origin of
+    # the frame specified in "frame_id". They do not need to be convex and can be an arbitrary
+    # shape, as long as they circumscribe the robot.
+    bounding_shape: [
+        [0.35, -0.3, 0.0],
+        [0.35, 0.3, 0.0],
+        [-0.4, 0.3, 0.0],
+        [-0.4, -0.3, 0.0],
+        [0.35, -0.3, 0.25],
+        [0.35, 0.3, 0.25],
+        [-0.4, 0.3, 0.25],
+        [-0.4, -0.3, 0.25]
+        ]
